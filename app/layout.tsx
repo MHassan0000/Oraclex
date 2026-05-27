@@ -1,20 +1,41 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { JetBrains_Mono, Sora, Space_Grotesk } from "next/font/google";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import { siteConfig } from "@/config/site";
+import { clientEnv } from "@/lib/env/client";
+import { cn } from "@/lib/utils";
+
+import "./globals.css";
+import { Providers } from "./providers";
+
+const fontSans = Space_Grotesk({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontMono = JetBrains_Mono({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
+});
+
+const fontHeading = Sora({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-heading",
 });
 
 export const metadata: Metadata = {
-  title: "Oraclex",
-  description: "RAG Chatbot",
+  title: {
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  metadataBase: new URL(clientEnv.NEXT_PUBLIC_APP_URL ?? siteConfig.url),
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -25,9 +46,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={cn(
+        fontSans.variable,
+        fontMono.variable,
+        fontHeading.variable,
+        "h-full scroll-smooth",
+      )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full bg-background font-sans text-foreground antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
