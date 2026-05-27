@@ -1,5 +1,6 @@
 import { AlignJustify, Search } from "lucide-react";
 
+import { AuthNav } from "@/components/auth/auth-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function AppTopbar() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <AuthNav />
           <ThemeToggle />
         </div>
       </div>

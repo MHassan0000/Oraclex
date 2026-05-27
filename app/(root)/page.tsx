@@ -4,6 +4,7 @@ import { MetricCard } from "@/app/(root)/_components/metric-card";
 import { PipelineCard } from "@/app/(root)/_components/pipeline-card";
 import { DashboardHero } from "@/components/sections/dashboard-hero";
 import { Button } from "@/components/ui/button";
+import { requireUser } from "@/lib/auth/session";
 
 const quickStats = [
   { label: "Active agents", value: "12", icon: Sparkles },
@@ -30,7 +31,8 @@ const pipelines = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  await requireUser("/");
   return (
     <div className="flex flex-col gap-10">
       <DashboardHero />
