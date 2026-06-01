@@ -5,7 +5,7 @@ import type { NavItem } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
 type AppShellNavProps = {
-  items: NavItem[];
+  items: readonly NavItem[];
   className?: string;
 };
 

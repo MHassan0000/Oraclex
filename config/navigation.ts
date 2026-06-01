@@ -1,4 +1,7 @@
-import type { appShellConfig } from "@/config/app-shell";
+import type { LucideIcon } from "lucide-react";
 
-export type NavItem = (typeof appShellConfig.sidebar.nav)[number];
-export type FooterNavItem = (typeof appShellConfig.sidebar.footer)[number];
+export type NavItem = {
+  readonly title: string;
+  readonly href: string;
+  readonly icon: LucideIcon;
+};
