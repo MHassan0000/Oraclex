@@ -2,18 +2,26 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Paperclip, Send, Mic, Sparkles, CornerDownLeft } from "lucide-react";
+import { Paperclip, Send, Mic, Sparkles, CornerDownLeft, Square } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 type ChatComposerProps = {
   onSend: (message: string) => void;
+  onCancel?: () => void;
   disabled?: boolean;
+  isStreaming?: boolean;
   placeholder?: string;
 };
 
-export function ChatComposer({ onSend, disabled, placeholder }: ChatComposerProps) {
+export function ChatComposer({
+  onSend,
+  onCancel,
+  disabled,
+  isStreaming,
+  placeholder,
+}: ChatComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -53,6 +61,15 @@ export function ChatComposer({ onSend, disabled, placeholder }: ChatComposerProp
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Sparkles className="h-3.5 w-3.5" />
         Oraclex RAG Assistant
+        {isStreaming ? (
+          <motion.span
+            className="rounded-full bg-primary/20 px-2 py-0.5 text-[0.6rem] text-primary"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            streaming…
+          </motion.span>
+        ) : null}
       </div>
       <div className="mt-3 flex gap-3">
         <div className="flex-1">
@@ -61,10 +78,14 @@ export function ChatComposer({ onSend, disabled, placeholder }: ChatComposerProp
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder ?? "Ask anything about your knowledge base..."}
+            placeholder={
+              isStreaming
+                ? "Waiting for response..."
+                : placeholder ?? "Ask anything about your knowledge base..."
+            }
             disabled={disabled}
             className={cn(
-              "min-h-[96px] w-full resize-none rounded-2xl border border-border/60 bg-background/70",
+              "min-h-[80px] w-full resize-none rounded-2xl border border-border/60 bg-background/70",
               "px-4 py-3 text-sm text-foreground shadow-sm",
               "placeholder:text-muted-foreground/60",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -93,17 +114,27 @@ export function ChatComposer({ onSend, disabled, placeholder }: ChatComposerProp
           <Button variant="outline" size="icon" aria-label="Voice input" disabled={disabled}>
             <Mic className="h-4 w-4" />
           </Button>
-          <Button
-            className={cn(
-              "h-12 w-12 rounded-2xl transition-all duration-200",
-              canSend && "shadow-md shadow-primary/25",
-            )}
-            aria-label="Send message"
-            disabled={!canSend}
-            onClick={handleSubmit}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          {isStreaming ? (
+            <Button
+              className="h-12 w-12 rounded-2xl bg-destructive hover:bg-destructive/90"
+              aria-label="Stop generation"
+              onClick={onCancel}
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              className={cn(
+                "h-12 w-12 rounded-2xl transition-all duration-200",
+                canSend && "shadow-md shadow-primary/25",
+              )}
+              aria-label="Send message"
+              disabled={!canSend}
+              onClick={handleSubmit}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </motion.div>

@@ -35,6 +35,7 @@ export function ChatPageClient({
     removeConversation,
     renameConversation,
     pinConversation,
+    cancelStream,
   } = useChat({
     initialConversations,
     initialMessages,
@@ -69,7 +70,7 @@ export function ChatPageClient({
       onRenameConversation={renameConversation}
       onPinConversation={pinConversation}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-10 pt-8 sm:px-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pb-6 pt-6 sm:px-6">
         {!hasMessages && !loading ? (
           <EmptyChatState
             onStart={(prompt) =>
@@ -77,14 +78,27 @@ export function ChatPageClient({
             }
           />
         ) : null}
-        <ChatMessageList
-          messages={messages}
-          loading={loading}
-          streamingId={streamingId}
-          onEdit={(id, content) => setEditing({ id, content })}
-          onRegenerate={regenerateMessage}
-        />
-        <ChatComposer onSend={sendMessage} disabled={isPending || !!streamingId} />
+
+        <div className="flex-1 overflow-y-auto pb-4">
+          <ChatMessageList
+            messages={messages}
+            loading={loading}
+            streamingId={streamingId}
+            onEdit={(id, content) => setEditing({ id, content })}
+            onRegenerate={regenerateMessage}
+            onCancelStream={cancelStream}
+          />
+        </div>
+
+        <div className="sticky bottom-0 pt-2">
+          <ChatComposer
+            onSend={sendMessage}
+            onCancel={cancelStream}
+            disabled={isPending || !!streamingId}
+            isStreaming={!!streamingId}
+          />
+        </div>
+
         <ChatEditModal
           open={Boolean(editing)}
           initialValue={editing?.content ?? ""}

@@ -1,6 +1,6 @@
 import "server-only";
 
-import pdf from "pdf-parse";
+import * as pdfParse from "pdf-parse";
 
 /**
  * Extract plain text from various file formats.
@@ -31,7 +31,11 @@ export async function extractText(
 
 async function extractPdf(buffer: Buffer): Promise<string> {
   try {
-    const data = await pdf(buffer);
+    // pdf-parse is a CJS module; handle both default and namespace import shapes
+    const parsePdf = typeof (pdfParse as any).default === "function"
+      ? (pdfParse as any).default
+      : pdfParse;
+    const data = await parsePdf(buffer);
     return cleanText(data.text);
   } catch (error) {
     throw new Error(`PDF extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`);

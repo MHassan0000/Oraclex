@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { AuthLoading } from "@/components/auth/auth-loading";
 
 export default function ForgotPasswordPage() {
   return (
@@ -11,7 +13,9 @@ export default function ForgotPasswordPage() {
         title="Reset your password"
         description="We will send a secure reset link to your inbox."
       >
-        <ForgotPasswordForm />
+        <Suspense fallback={<AuthLoading />}>
+          <ForgotPasswordForm />
+        </Suspense>
         <p className="text-sm text-muted-foreground">
           Remembered your password?{" "}
           <Link className="text-foreground hover:underline" href="/login">

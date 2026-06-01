@@ -7,9 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { appToast } from "@/lib/client/toast";
 import type { Conversation, Message } from "@/lib/db/types";
 import type { ChatConversation, ChatMessage } from "@/components/chat/chat-types";
+import type { Citation, StreamMetadata } from "@/lib/streaming/types";
+import { parseSSEEvent } from "@/lib/streaming/types";
 import {
   createChatAction,
-  sendMessageAction,
   editMessageAction,
   deleteConversationAction,
   renameConversationAction,
@@ -36,7 +37,18 @@ function toUiMessage(row: Message): ChatMessage {
     createdAt: row.created_at,
     edited: false,
     error: row.status === "error",
+    model: row.model ?? undefined,
+    citations: parseCitationsFromMetadata(row.metadata),
   };
+}
+
+function parseCitationsFromMetadata(
+  metadata: Record<string, unknown>,
+): Citation[] | undefined {
+  if (metadata?.citations && Array.isArray(metadata.citations)) {
+    return metadata.citations as Citation[];
+  }
+  return undefined;
 }
 
 // ── Hook ──
@@ -59,15 +71,27 @@ export function useChat(options: UseChatOptions = {}) {
     options.initialMessages ?? [],
   );
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [streamCitations, setStreamCitations] = useState<Citation[]>([]);
   const [loading, setLoading] = useState(!options.initialConversations);
   const [error, setError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const conversations = useMemo(
     () => dbConversations.map(toUiConversation),
     [dbConversations],
   );
-  const messages = useMemo(() => dbMessages.map(toUiMessage), [dbMessages]);
+
+  const messages: ChatMessage[] = useMemo(() => {
+    const uiMessages = dbMessages.map(toUiMessage);
+    // Attach live streaming citations to the streaming message
+    if (streamingId && streamCitations.length > 0) {
+      return uiMessages.map((m) =>
+        m.id === streamingId ? { ...m, citations: streamCitations } : m,
+      );
+    }
+    return uiMessages;
+  }, [dbMessages, streamingId, streamCitations]);
 
   // ── Initial fetch ──
   useEffect(() => {
@@ -135,7 +159,15 @@ export function useChat(options: UseChatOptions = {}) {
     return () => { supabase.removeChannel(channel); };
   }, [supabase]);
 
-  // ── Send message with RAG streaming ──
+  // ── Cancel streaming ──
+  const cancelStream = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreamingId(null);
+    setStreamCitations([]);
+  }, []);
+
+  // ── Send message with streaming ──
   const sendMessage = useCallback(
     (content: string) => {
       if (!content.trim()) return;
@@ -144,13 +176,17 @@ export function useChat(options: UseChatOptions = {}) {
         try {
           let conversationId = options.activeConversationId;
 
-          // Create new conversation if needed
           if (!conversationId) {
             const { conversation } = await createChatAction(content);
             conversationId = conversation.id;
             router.push(`/chat/${conversation.id}`);
             return;
           }
+
+          // Cancel existing stream
+          abortRef.current?.abort();
+          const controller = new AbortController();
+          abortRef.current = controller;
 
           // Optimistic user message
           const optimisticUser: Message = {
@@ -188,9 +224,9 @@ export function useChat(options: UseChatOptions = {}) {
             updated_at: new Date().toISOString(),
           };
           setStreamingId(assistantId);
+          setStreamCitations([]);
           setDbMessages((prev) => [...prev, optimisticAssistant]);
 
-          // Call the RAG chat API with streaming
           try {
             const response = await fetch("/api/chat", {
               method: "POST",
@@ -200,6 +236,7 @@ export function useChat(options: UseChatOptions = {}) {
                 message: content,
                 stream: true,
               }),
+              signal: controller.signal,
             });
 
             if (!response.ok) {
@@ -209,81 +246,110 @@ export function useChat(options: UseChatOptions = {}) {
 
             if (!response.body) throw new Error("No response body");
 
-            // Read SSE stream
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = "";
             let fullContent = "";
 
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
 
-              const text = decoder.decode(value, { stream: true });
-              const lines = text.split("\n");
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() ?? "";
 
               for (const line of lines) {
-                if (!line.startsWith("data: ")) continue;
-                try {
-                  const parsed = JSON.parse(line.slice(6));
-                  if (parsed.done) {
-                    // Stream complete - update with final message ID if available
-                    if (parsed.messageId) {
+                const event = parseSSEEvent(line);
+                if (!event) continue;
+
+                switch (event.type) {
+                  case "content":
+                    fullContent += event.content ?? "";
+                    setDbMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId ? { ...m, content: fullContent } : m,
+                      ),
+                    );
+                    break;
+
+                  case "citation":
+                    if (event.citations) {
+                      setStreamCitations(event.citations);
+                    }
+                    break;
+
+                  case "done":
+                    // Replace optimistic with real data
+                    if (event.metadata?.messageId) {
                       setDbMessages((prev) =>
                         prev.map((m) =>
                           m.id === assistantId
-                            ? { ...m, id: parsed.messageId, content: fullContent, status: "complete" as const }
+                            ? {
+                                ...m,
+                                id: event.metadata!.messageId!,
+                                content: fullContent,
+                                status: "complete" as const,
+                                model: event.metadata?.model ?? null,
+                                metadata: {
+                                  citations: event.citations ?? [],
+                                },
+                              }
                             : m,
                         ),
                       );
                     }
-                  } else if (parsed.content) {
-                    fullContent += parsed.content;
+                    // Replace optimistic user message
                     setDbMessages((prev) =>
                       prev.map((m) =>
-                        m.id === assistantId
-                          ? { ...m, content: fullContent }
+                        m.id === optimisticUser.id
+                          ? { ...m, status: "complete" as const }
                           : m,
                       ),
                     );
-                  }
-                } catch {
-                  // Skip malformed chunks
+                    if (event.citations) setStreamCitations(event.citations);
+                    break;
+
+                  case "error":
+                    setDbMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId
+                          ? { ...m, content: event.error ?? "An error occurred", status: "error" as const }
+                          : m,
+                      ),
+                    );
+                    break;
                 }
               }
             }
 
-            // Ensure content is set even if we missed the done event
+            // Ensure content is set if stream ended without done event
             if (fullContent) {
               setDbMessages((prev) =>
                 prev.map((m) =>
-                  m.id === assistantId
+                  m.id === assistantId && m.status !== ("complete" as const)
                     ? { ...m, content: fullContent, status: "complete" as const }
                     : m,
                 ),
               );
             }
-          } catch (apiError) {
-            // If API fails, fall back to server action for the user message save
-            // and show an error on the assistant message
+          } catch (err) {
+            if ((err as Error).name === "AbortError") return;
+
             setDbMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId
-                  ? { ...m, content: "I'm unable to reach the AI service right now. Please check your API keys and try again.", status: "error" as const }
+                  ? {
+                      ...m,
+                      content: "Unable to reach the AI service. Please check your API key and try again.",
+                      status: "error" as const,
+                    }
                   : m,
               ),
             );
-
-            // Still save the user message via server action
-            try {
-              const msg = await sendMessageAction(conversationId, content, "user");
-              setDbMessages((prev) =>
-                prev.map((m) => (m.id === optimisticUser.id ? msg : m)),
-              );
-            } catch {
-              // Silent fail on user message save
-            }
           } finally {
             setStreamingId(null);
+            abortRef.current = null;
           }
         } catch (err) {
           appToast.error(err instanceof Error ? err.message : "Failed to send message");
@@ -303,38 +369,17 @@ export function useChat(options: UseChatOptions = {}) {
   }, []);
 
   const regenerateMessage = useCallback((id: string) => {
-    setStreamingId(id);
-    startTransition(async () => {
-      try {
-        // Find the last user message before this assistant message
-        const msgIndex = dbMessages.findIndex((m) => m.id === id);
-        const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
-        const lastUserMsg = userMessages[userMessages.length - 1];
+    // Find the last user message before the assistant message
+    const msgIndex = dbMessages.findIndex((m) => m.id === id);
+    const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
+    const lastUserMsg = userMessages[userMessages.length - 1];
 
-        if (lastUserMsg && options.activeConversationId) {
-          const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              conversationId: options.activeConversationId,
-              message: lastUserMsg.content,
-              stream: false,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.message) {
-              setDbMessages((prev) =>
-                prev.map((m) => (m.id === id ? { ...m, content: data.message.content, status: "complete" as const } : m)),
-              );
-            }
-          }
-        }
-      } catch { appToast.error("Failed to regenerate"); }
-      finally { setStreamingId(null); }
-    });
-  }, [dbMessages, options.activeConversationId]);
+    if (lastUserMsg && options.activeConversationId) {
+      // Remove the assistant message and resend
+      setDbMessages((prev) => prev.filter((m) => m.id !== id));
+      sendMessage(lastUserMsg.content);
+    }
+  }, [dbMessages, options.activeConversationId, sendMessage]);
 
   const removeConversation = useCallback((id: string) => {
     setDbConversations((prev) => prev.filter((c) => c.id !== id));
@@ -376,5 +421,6 @@ export function useChat(options: UseChatOptions = {}) {
     removeConversation,
     renameConversation,
     pinConversation,
+    cancelStream,
   };
 }

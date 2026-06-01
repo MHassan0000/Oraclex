@@ -1,3 +1,5 @@
+import type { Citation } from "@/lib/streaming/types";
+
 export type ChatRole = "assistant" | "user" | "system";
 
 export type ChatAttachment = {
@@ -15,8 +17,10 @@ export type ChatMessage = {
   createdAt: string;
   edited?: boolean;
   error?: boolean;
-  citations?: Array<{ id: string; label: string; url?: string }>;
+  citations?: Citation[];
   attachments?: ChatAttachment[];
+  model?: string;
+  isStreaming?: boolean;
 };
 
 export type ChatConversation = {

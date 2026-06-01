@@ -3,10 +3,9 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Upload,
   FileText,
   FileSpreadsheet,
-  File,
+  File as FileIcon,
   X,
   CheckCircle2,
   AlertCircle,
@@ -17,9 +16,6 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  validateFile,
-  extractFileMetadata,
-  generateFileChecksum,
   formatFileSize,
   ALLOWED_EXTENSIONS,
 } from "@/lib/documents/validation";
@@ -29,7 +25,7 @@ import { UploadDropzone } from "@/lib/uploadthing/components";
 
 type FileUploadItem = {
   id: string;
-  file: File;
+  fileName: string;
   status: "pending" | "uploading" | "processing" | "complete" | "error";
   progress: number;
   error?: string;
@@ -46,7 +42,7 @@ function getFileIcon(fileName: string) {
     case "md":
       return <FileText className="h-5 w-5 text-blue-400" />;
     default:
-      return <File className="h-5 w-5 text-muted-foreground" />;
+      return <FileIcon className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
@@ -108,7 +104,7 @@ export function DocumentUpload() {
             ...prev,
             {
               id,
-              file: new File([], fileName),
+              fileName,
               status: "uploading",
               progress: 10,
             },
@@ -235,11 +231,11 @@ export function DocumentUpload() {
                   item.status === "complete" && "border-green-500/30 bg-green-500/5",
                 )}
               >
-                {getFileIcon(item.file.name || "file")}
+                {getFileIcon(item.fileName || "file")}
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {item.file.name || "Uploading..."}
+                    {item.fileName || "Uploading..."}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     {item.status === "uploading" ? (
