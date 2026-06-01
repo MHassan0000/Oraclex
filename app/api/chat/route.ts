@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth/session";
 import { executeWorkflow } from "@/lib/agent/orchestrator";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
+import { chatMessageSchema } from "@/lib/security/schemas";
+import { validateRequestBody } from "@/lib/security/server-utils";
+import { checkRateLimit, rateLimitHeaders } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,22 +13,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { conversationId, message, model = DEFAULT_MODEL } = body;
-
-    if (!conversationId || !message) {
+    // Rate limiting
+    const rl = checkRateLimit(user.id, "chat");
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "Missing required fields: conversationId, message" },
-        { status: 400 },
+        { error: "Too many requests. Please slow down." },
+        { status: 429, headers: rateLimitHeaders(rl.remaining, rl.resetAt) },
       );
     }
 
-    // Execute the full LangGraph workflow and return SSE stream
-    return await executeWorkflow(conversationId, user.id, message, model);
+    const body = await request.json();
+
+    // Validate & sanitize input
+    const validation = validateRequestBody(chatMessageSchema, body);
+    if (!validation.success) return validation.response;
+
+    const { conversationId, message, model } = validation.data;
+
+    return await executeWorkflow(conversationId, user.id, message, model ?? DEFAULT_MODEL);
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Chat completion failed" },
+      { error: "Chat completion failed" },
       { status: 500 },
     );
   }

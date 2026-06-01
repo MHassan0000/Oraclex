@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth/session";
 import { ingestDocument } from "@/lib/rag/ingest";
+import { ingestionSchema } from "@/lib/security/schemas";
+import { validateRequestBody } from "@/lib/security/server-utils";
+import { checkRateLimit, rateLimitHeaders } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,18 +12,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { documentId, fileUrl, fileName, fileType } = body;
-
-    if (!documentId || !fileUrl || !fileName || !fileType) {
+    // Rate limiting
+    const rl = checkRateLimit(user.id, "ingest");
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "Missing required fields: documentId, fileUrl, fileName, fileType" },
-        { status: 400 },
+        { error: "Too many requests. Please wait before uploading more." },
+        { status: 429, headers: rateLimitHeaders(rl.remaining, rl.resetAt) },
       );
     }
 
-    // Run ingestion (this will be fast enough for most documents;
-    // for very large files, you'd use a queue system)
+    const body = await request.json();
+
+    // Validate & sanitize input
+    const validation = validateRequestBody(ingestionSchema, body);
+    if (!validation.success) return validation.response;
+
+    const { documentId, fileUrl, fileName, fileType } = validation.data;
+
     const result = await ingestDocument(
       documentId,
       user.id,
@@ -33,7 +41,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Ingestion error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Ingestion failed" },
+      { error: "Ingestion failed" },
       { status: 500 },
     );
   }
