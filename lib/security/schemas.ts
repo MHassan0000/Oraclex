@@ -41,7 +41,8 @@ export const documentCreateSchema = z.object({
     .max(100),
   storageUrl: z
     .string()
-    .url("Invalid URL"),
+    .url("Invalid URL")
+    .refine((value) => isAllowedUploadedFileUrl(value), "Invalid upload URL"),
   fileSize: z
     .number()
     .positive()
@@ -58,7 +59,8 @@ export const ingestionSchema = z.object({
     .uuid("Invalid document ID"),
   fileUrl: z
     .string()
-    .url("Invalid file URL"),
+    .url("Invalid file URL")
+    .refine((value) => isAllowedUploadedFileUrl(value), "Invalid upload URL"),
   fileName: z
     .string()
     .min(1)
@@ -142,4 +144,16 @@ export function sanitizeUrl(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function isAllowedUploadedFileUrl(url: string): boolean {
+  const sanitized = sanitizeUrl(url);
+  if (!sanitized) return false;
+
+  const { hostname } = new URL(sanitized);
+  return (
+    hostname === "utfs.io" ||
+    hostname === "ufs.sh" ||
+    hostname.endsWith(".ufs.sh")
+  );
 }

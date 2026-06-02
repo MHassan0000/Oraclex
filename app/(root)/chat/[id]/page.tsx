@@ -1,4 +1,5 @@
 import { ChatPageClient } from "@/components/chat/chat-page-client";
+import { isAdminUser } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
 import { getConversations } from "@/lib/db/conversations";
 import { getMessages } from "@/lib/db/messages";
@@ -10,7 +11,7 @@ type ChatThreadPageProps = {
 
 export default async function ChatThreadPage({ params }: ChatThreadPageProps) {
   const { id } = await params;
-  await requireUser(`/chat/${id}`);
+  const user = await requireUser(`/chat/${id}`);
 
   let conversations: Conversation[] = [];
   let messages: Message[] = [];
@@ -28,6 +29,7 @@ export default async function ChatThreadPage({ params }: ChatThreadPageProps) {
       activeConversationId={id}
       initialConversations={conversations}
       initialMessages={messages}
+      isAdmin={isAdminUser(user)}
     />
   );
 }

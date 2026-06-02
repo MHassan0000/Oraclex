@@ -9,11 +9,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { TooltipValueType } from "recharts";
 import type { TokenUsageByDay } from "@/lib/db/analytics";
 
 type TokenUsageChartProps = {
   data: TokenUsageByDay[];
 };
+
+function formatTokenValue(value: TooltipValueType | undefined) {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  const numeric = typeof normalized === "number" ? normalized : Number(normalized);
+  return Number.isFinite(numeric) ? numeric.toLocaleString() : "0";
+}
 
 export function TokenUsageChart({ data }: TokenUsageChartProps) {
   if (data.length === 0) {
@@ -50,7 +57,7 @@ export function TokenUsageChart({ data }: TokenUsageChartProps) {
               fontSize: "12px",
               boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
-            formatter={(value: number) => [value.toLocaleString(), "Tokens"]}
+            formatter={(value) => [formatTokenValue(value), "Tokens"]}
             labelFormatter={(label) => `Date: ${label}`}
           />
           <Area

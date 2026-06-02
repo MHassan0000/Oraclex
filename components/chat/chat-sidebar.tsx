@@ -38,6 +38,7 @@ type ChatSidebarProps = {
   onDeleteConversation?: (id: string) => void;
   onRenameConversation?: (id: string, title: string) => void;
   onPinConversation?: (id: string, pinned: boolean) => void;
+  isAdmin?: boolean;
 };
 
 export function ChatSidebar({
@@ -51,6 +52,7 @@ export function ChatSidebar({
   onDeleteConversation,
   onRenameConversation,
   onPinConversation,
+  isAdmin = false,
 }: ChatSidebarProps) {
   const router = useRouter();
 
@@ -196,14 +198,16 @@ export function ChatSidebar({
           <FileText className="h-4 w-4" />
           Knowledge Base
         </Link>
-        <Link
-          href="/admin"
-          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-          onClick={onClose}
-        >
-          <BarChart3 className="h-4 w-4" />
-          Admin Dashboard
-        </Link>
+        {isAdmin ? (
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            onClick={onClose}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Admin Dashboard
+          </Link>
+        ) : null}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ type ChatShellProps = {
   onDeleteConversation?: (id: string) => void;
   onRenameConversation?: (id: string, title: string) => void;
   onPinConversation?: (id: string, pinned: boolean) => void;
+  isAdmin?: boolean;
 };
 
 export function ChatShell({
@@ -22,6 +23,7 @@ export function ChatShell({
   onDeleteConversation,
   onRenameConversation,
   onPinConversation,
+  isAdmin = false,
 }: ChatShellProps) {
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +59,7 @@ export function ChatShell({
             onDeleteConversation={onDeleteConversation}
             onRenameConversation={onRenameConversation}
             onPinConversation={onPinConversation}
+            isAdmin={isAdmin}
           />
         </div>
       ) : null}
@@ -89,6 +92,7 @@ export function ChatShell({
             onDeleteConversation={onDeleteConversation}
             onRenameConversation={onRenameConversation}
             onPinConversation={onPinConversation}
+            isAdmin={isAdmin}
           />
         </SheetContent>
       </Sheet>

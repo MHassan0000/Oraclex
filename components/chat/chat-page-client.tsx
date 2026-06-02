@@ -15,12 +15,14 @@ type ChatPageClientProps = {
   activeConversationId?: string | null;
   initialConversations?: Conversation[];
   initialMessages?: Message[];
+  isAdmin?: boolean;
 };
 
 export function ChatPageClient({
   activeConversationId,
   initialConversations,
   initialMessages,
+  isAdmin = false,
 }: ChatPageClientProps) {
   const {
     conversations,
@@ -54,6 +56,7 @@ export function ChatPageClient({
         onDeleteConversation={removeConversation}
         onRenameConversation={renameConversation}
         onPinConversation={pinConversation}
+        isAdmin={isAdmin}
       >
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-10 pt-8 sm:px-6">
           <ChatErrorState message={error} onRetry={() => window.location.reload()} />
@@ -69,6 +72,7 @@ export function ChatPageClient({
       onDeleteConversation={removeConversation}
       onRenameConversation={renameConversation}
       onPinConversation={pinConversation}
+      isAdmin={isAdmin}
     >
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pb-6 pt-6 sm:px-6">
         {!hasMessages && !loading ? (

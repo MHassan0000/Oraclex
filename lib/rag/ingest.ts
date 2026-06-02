@@ -119,7 +119,8 @@ export async function ingestDocument(
           ingested_at: new Date().toISOString(),
         },
       })
-      .eq("id", documentId);
+      .eq("id", documentId)
+      .eq("user_id", userId);
 
     return {
       documentId,

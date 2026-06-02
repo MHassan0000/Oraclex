@@ -2,7 +2,7 @@ import "server-only";
 
 /**
  * Security headers for all responses.
- * Apply via Next.js config or middleware.
+ * Apply via Next.js config or proxy.
  */
 export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",

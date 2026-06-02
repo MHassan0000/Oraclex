@@ -21,7 +21,7 @@ export async function createServerSupabaseClient() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // This will be handled by middleware when called from Server Components.
+            // This will be handled by proxy when called from Server Components.
           }
         },
       },

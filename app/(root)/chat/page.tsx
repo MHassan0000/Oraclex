@@ -1,10 +1,11 @@
 import { ChatPageClient } from "@/components/chat/chat-page-client";
+import { isAdminUser } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
 import { getConversations } from "@/lib/db/conversations";
 import type { Conversation } from "@/lib/db/types";
 
 export default async function ChatPage() {
-  await requireUser("/chat");
+  const user = await requireUser("/chat");
 
   let conversations: Conversation[] = [];
   try {
@@ -16,6 +17,7 @@ export default async function ChatPage() {
   return (
     <ChatPageClient
       initialConversations={conversations}
+      isAdmin={isAdminUser(user)}
     />
   );
 }

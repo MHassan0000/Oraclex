@@ -15,7 +15,7 @@ function isPublicRoute(pathname: string) {
   return publicRoutes.some((route) => pathname.startsWith(route));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

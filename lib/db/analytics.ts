@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // ──────────────────────────────────────────
 // Types
@@ -48,7 +48,7 @@ export type ConversationStats = {
 // ──────────────────────────────────────────
 
 export async function getOverviewStats(): Promise<OverviewStats> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   const [convRes, msgRes, docRes, usageRes, usersRes, readyRes, failedRes] =
     await Promise.all([
@@ -78,7 +78,7 @@ export async function getOverviewStats(): Promise<OverviewStats> {
 }
 
 export async function getTokenUsageByDay(days: number = 30): Promise<TokenUsageByDay[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
 
   const { data } = await supabase
@@ -105,7 +105,7 @@ export async function getTokenUsageByDay(days: number = 30): Promise<TokenUsageB
 }
 
 export async function getModelUsageStats(): Promise<ModelUsage[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   const { data } = await supabase
     .from("usage_logs")
@@ -132,7 +132,7 @@ export async function getModelUsageStats(): Promise<ModelUsage[]> {
 }
 
 export async function getUploadStatsByDay(days: number = 30): Promise<UploadStats[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
 
   const { data } = await supabase
@@ -156,7 +156,7 @@ export async function getUploadStatsByDay(days: number = 30): Promise<UploadStat
 }
 
 export async function getConversationStatsByDay(days: number = 30): Promise<ConversationStats[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
 
   const [convData, msgData] = await Promise.all([
@@ -192,7 +192,7 @@ export async function getConversationStatsByDay(days: number = 30): Promise<Conv
 }
 
 export async function getRecentConversations(limit: number = 10) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   const { data } = await supabase
     .from("conversations")

@@ -9,11 +9,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { TooltipValueType } from "recharts";
 import type { TokenUsageByDay } from "@/lib/db/analytics";
 
 type CostChartProps = {
   data: TokenUsageByDay[];
 };
+
+function formatCurrencyValue(value: TooltipValueType | undefined) {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  const numeric = typeof normalized === "number" ? normalized : Number(normalized);
+  return Number.isFinite(numeric) ? `$${numeric.toFixed(4)}` : "$0.0000";
+}
 
 export function CostChart({ data }: CostChartProps) {
   if (data.length === 0) {
@@ -54,7 +61,7 @@ export function CostChart({ data }: CostChartProps) {
               fontSize: "12px",
               boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
-            formatter={(value: number) => [`$${value.toFixed(4)}`, "Cost"]}
+            formatter={(value) => [formatCurrencyValue(value), "Cost"]}
             labelFormatter={(label) => `Date: ${label}`}
           />
           <Area

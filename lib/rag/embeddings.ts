@@ -1,6 +1,7 @@
 import "server-only";
 
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { serverEnv } from "@/lib/env/server";
 
 /**
  * Embedding service using OpenRouter-compatible embeddings.
@@ -12,11 +13,8 @@ const EMBEDDING_DIMENSIONS = 1536;
 const BATCH_SIZE = 100;
 
 function getEmbeddingsClient(): OpenAIEmbeddings {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set");
-
   return new OpenAIEmbeddings({
-    openAIApiKey: apiKey,
+    openAIApiKey: serverEnv.OPENROUTER_API_KEY,
     modelName: EMBEDDING_MODEL,
     configuration: {
       baseURL: "https://openrouter.ai/api/v1",

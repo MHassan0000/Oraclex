@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth/session";
+import { documentCreateSchema } from "@/lib/security/schemas";
 import type { Document } from "@/lib/db/types";
 
 /**
@@ -19,14 +20,21 @@ export async function createDocumentAction(input: {
   const user = await getUser();
   if (!user) throw new Error("Unauthorized");
 
+  const parsed = documentCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.flatten().fieldErrors.storageUrl?.[0] ?? "Invalid document input");
+  }
+
+  const documentInput = parsed.data;
+
   const supabase = await createServerSupabaseClient();
 
   // Duplicate detection via checksum
-  if (input.checksum) {
+  if (documentInput.checksum) {
     const { data: existing } = await supabase
       .from("documents")
       .select("id, title")
-      .eq("checksum", input.checksum)
+      .eq("checksum", documentInput.checksum)
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -39,14 +47,14 @@ export async function createDocumentAction(input: {
     .from("documents")
     .insert({
       user_id: user.id,
-      title: input.title,
-      file_name: input.fileName,
-      file_type: input.fileType,
-      storage_path: input.storageUrl,
-      checksum: input.checksum ?? null,
+      title: documentInput.title,
+      file_name: documentInput.fileName,
+      file_type: documentInput.fileType,
+      storage_path: documentInput.storageUrl,
+      checksum: documentInput.checksum ?? null,
       status: "processing",
       metadata: {
-        file_size: input.fileSize,
+        file_size: documentInput.fileSize,
         uploaded_at: new Date().toISOString(),
       },
     })
@@ -103,6 +111,9 @@ export async function updateDocumentStatusAction(
   status: "processing" | "ready" | "failed" | "archived",
   error?: string,
 ): Promise<void> {
+  const user = await getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const supabase = await createServerSupabaseClient();
   const { error: updateError } = await supabase
     .from("documents")
@@ -110,7 +121,8 @@ export async function updateDocumentStatusAction(
       status,
       metadata: error ? { error } : undefined,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (updateError) throw updateError;
 }

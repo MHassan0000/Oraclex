@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
   getOverviewStats,
   getTokenUsageByDay,
@@ -10,7 +10,7 @@ import {
 import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
 
 export default async function AdminPage() {
-  await requireUser("/admin");
+  await requireAdmin();
 
   const [stats, tokenUsage, modelUsage, uploadStats, conversationStats, recentConversations] =
     await Promise.all([

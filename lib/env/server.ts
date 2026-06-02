@@ -6,15 +6,19 @@ import { clientEnv } from "@/lib/env/client";
 assertServer();
 
 const serverEnvSchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-  OPENROUTER_API_KEY: z.string().min(1).optional(),
-  UPLOADTHING_TOKEN: z.string().min(1).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  OPENROUTER_API_KEY: z.string().min(1),
+  UPLOADTHING_TOKEN: z.string().min(1),
+  ADMIN_USER_IDS: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
 });
 
 const parsed = serverEnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
   UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+  ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
+  ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 });
 
 if (!parsed.success) {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { DEFAULT_MODEL, FALLBACK_MODEL, getModelConfig } from "@/lib/ai/models";
+import { serverEnv } from "@/lib/env/server";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -35,16 +36,14 @@ export type CompletionResult = {
 };
 
 function getApiKey(): string {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error("OPENROUTER_API_KEY is not set");
-  return key;
+  return serverEnv.OPENROUTER_API_KEY;
 }
 
 function buildHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${getApiKey()}`,
     "Content-Type": "application/json",
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    "HTTP-Referer": serverEnv.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
     "X-Title": "Oraclex RAG Platform",
   };
 }

@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import type { TooltipValueType } from "recharts";
 import type { ModelUsage } from "@/lib/db/analytics";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#e0e7ff", "#818cf8"];
@@ -17,6 +18,12 @@ const COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#e0e7ff", "#818cf8"
 type ModelUsageChartProps = {
   data: ModelUsage[];
 };
+
+function formatNumericValue(value: TooltipValueType | undefined) {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  const numeric = typeof normalized === "number" ? normalized : Number(normalized);
+  return Number.isFinite(numeric) ? numeric.toLocaleString() : "0";
+}
 
 export function ModelUsageChart({ data }: ModelUsageChartProps) {
   if (data.length === 0) {
@@ -49,9 +56,9 @@ export function ModelUsageChart({ data }: ModelUsageChartProps) {
               fontSize: "12px",
               boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
-            formatter={(value: number, name: string) => {
-              if (name === "count") return [value, "Requests"];
-              if (name === "tokens") return [value.toLocaleString(), "Tokens"];
+            formatter={(value, name) => {
+              if (name === "count") return [formatNumericValue(value), "Requests"];
+              if (name === "tokens") return [formatNumericValue(value), "Tokens"];
               return [value, name];
             }}
           />
