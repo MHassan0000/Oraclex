@@ -1,9 +1,30 @@
 import "server-only";
 
-import { DEFAULT_MODEL, getModelConfig, getModelFallbacks } from "@/lib/ai/models";
+import {
+  DEFAULT_MODEL,
+  MODEL_LIST,
+  type ModelConfig,
+  type ModelProvider,
+  getModelConfig,
+  getModelFallbacks,
+} from "@/lib/ai/models";
 import { serverEnv } from "@/lib/env/server";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const MODEL_CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_LIVE_FREE_MODELS = 30;
+
+type OpenRouterModel = {
+  id: string;
+  name?: string;
+  context_length?: number;
+  pricing?: {
+    prompt?: string;
+    completion?: string;
+  };
+};
+
+let modelCache: { expiresAt: number; models: ModelConfig[] } | null = null;
 
 export type ChatCompletionMessage = {
   role: "system" | "user" | "assistant";
@@ -48,6 +69,122 @@ function buildHeaders(): Record<string, string> {
   };
 }
 
+function parsePricePer1k(value?: string): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed * 1000 : 0;
+}
+
+function inferProvider(modelId: string): ModelProvider {
+  const provider = modelId.split("/")[0] as ModelProvider | undefined;
+  switch (provider) {
+    case "openai":
+    case "anthropic":
+    case "google":
+    case "deepseek":
+    case "meta":
+    case "mistral":
+    case "qwen":
+    case "z-ai":
+    case "moonshot":
+    case "openrouter":
+    case "nvidia":
+    case "liquid":
+    case "poolside":
+      return provider;
+    default:
+      return "free";
+  }
+}
+
+function normalizeModelName(model: OpenRouterModel): string {
+  const name = model.name?.replace(/\s*\(free\)\s*$/i, "").trim();
+  if (name) return `${name} (Free)`;
+  return `${model.id.replace(":free", "")} (Free)`;
+}
+
+function toModelConfig(model: OpenRouterModel): ModelConfig {
+  const isFree = model.id.endsWith(":free");
+  return {
+    id: model.id,
+    name: isFree ? normalizeModelName(model) : model.name ?? model.id,
+    provider: inferProvider(model.id),
+    contextWindow: model.context_length ?? 128_000,
+    maxOutput: 8_192,
+    inputCostPer1k: isFree ? 0 : parsePricePer1k(model.pricing?.prompt),
+    outputCostPer1k: isFree ? 0 : parsePricePer1k(model.pricing?.completion),
+    supportsStreaming: true,
+    isFree,
+  };
+}
+
+function mergeModels(primary: ModelConfig[], secondary: ModelConfig[]): ModelConfig[] {
+  const seen = new Set<string>();
+  const merged: ModelConfig[] = [];
+
+  for (const model of [...primary, ...secondary]) {
+    if (seen.has(model.id)) continue;
+    seen.add(model.id);
+    merged.push(model);
+  }
+
+  return merged;
+}
+
+async function readOpenRouterError(response: Response): Promise<string> {
+  const body = await response.text();
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: {
+        message?: string;
+        code?: number | string;
+        metadata?: { retry_after_seconds?: number };
+      };
+    };
+    const retryAfter = parsed.error?.metadata?.retry_after_seconds;
+    return [
+      parsed.error?.message ?? body,
+      parsed.error?.code ? `code=${parsed.error.code}` : null,
+      retryAfter ? `retry_after_seconds=${retryAfter}` : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
+  } catch {
+    return body;
+  }
+}
+
+export async function getAvailableOpenRouterModels(): Promise<ModelConfig[]> {
+  if (modelCache && modelCache.expiresAt > Date.now()) {
+    return modelCache.models;
+  }
+
+  const response = await fetch(`${OPENROUTER_BASE_URL}/models`, {
+    headers: buildHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `OpenRouter models error (${response.status}): ${await readOpenRouterError(response)}`,
+    );
+  }
+
+  const payload = (await response.json()) as { data?: OpenRouterModel[] };
+  const liveFreeModels = (payload.data ?? [])
+    .filter((model) => model.id.endsWith(":free"))
+    .slice(0, MAX_LIVE_FREE_MODELS)
+    .map(toModelConfig);
+
+  const staticPaidModels = MODEL_LIST.filter((model) => !model.isFree);
+  const models = mergeModels(staticPaidModels, liveFreeModels.length ? liveFreeModels : MODEL_LIST);
+
+  modelCache = {
+    expiresAt: Date.now() + MODEL_CACHE_TTL_MS,
+    models,
+  };
+
+  return models;
+}
+
 /**
  * Non-streaming completion. Returns the full response at once.
  */
@@ -78,8 +215,9 @@ export async function createCompletion(
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`OpenRouter API error (${response.status}): ${errorBody}`);
+      throw new Error(
+        `OpenRouter API error (${response.status}): ${await readOpenRouterError(response)}`,
+      );
     }
 
     const data = await response.json();
@@ -130,26 +268,32 @@ export async function createStreamingCompletion(
 
   for (const model of getModelFallbacks(modelId)) {
     const config = getModelConfig(model);
-    const attempt = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens ?? config.maxOutput,
-        stream: true,
-      }),
-    });
+    try {
+      const attempt = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: buildHeaders(),
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens ?? config.maxOutput,
+          stream: true,
+        }),
+      });
 
-    if (attempt.ok) {
-      response = attempt;
-      activeModel = model;
-      break;
+      if (attempt.ok) {
+        response = attempt;
+        activeModel = model;
+        break;
+      }
+
+      lastError = new Error(
+        `OpenRouter API error (${attempt.status}) for ${model}: ${await readOpenRouterError(attempt)}`,
+      );
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
     }
 
-    const errorBody = await attempt.text();
-    lastError = new Error(`OpenRouter API error (${attempt.status}) for ${model}: ${errorBody}`);
     console.warn(`OpenRouter model ${model} failed; trying next fallback.`, lastError);
   }
 
@@ -184,7 +328,7 @@ export async function createStreamingCompletion(
 
             const data = trimmed.slice(6);
             if (data === "[DONE]") {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: "", done: true })}\n\n`));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: "", done: true, model: activeModel })}\n\n`));
               controller.close();
               return;
             }

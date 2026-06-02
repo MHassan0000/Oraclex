@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Menu, MessagesSquare, Network, Quote } from "lucide-react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { ChatSearchResult } from "@/components/chat/chat-types";
 import type { Conversation, Message } from "@/lib/db/types";
-import { DEFAULT_MODEL, MODEL_LIST } from "@/lib/ai/models";
+import { DEFAULT_MODEL, MODEL_LIST, type ModelConfig } from "@/lib/ai/models";
 
 type ChatPageClientProps = {
   activeConversationId?: string | null;
@@ -53,6 +53,35 @@ export function ChatPageClient({
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
   const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [modelOptions, setModelOptions] = useState<ModelConfig[]>(MODEL_LIST);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadModels() {
+      try {
+        const response = await fetch("/api/models");
+        if (!response.ok) return;
+        const data = (await response.json()) as { models?: ModelConfig[] };
+        if (!cancelled && data.models?.length) {
+          setModelOptions(data.models);
+          setSelectedModel((current) =>
+            data.models?.some((model) => model.id === current)
+              ? current
+              : data.models?.[0]?.id ?? DEFAULT_MODEL,
+          );
+        }
+      } catch {
+        // Static model list remains available as a fallback.
+      }
+    }
+
+    loadModels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const hasMessages = messages.length > 0;
   const activeId = currentConversationId ?? activeConversationId ?? conversations[0]?.id ?? null;
@@ -156,7 +185,7 @@ export function ChatPageClient({
               disabled={isPending || !!streamingId}
               isStreaming={!!streamingId}
               selectedModel={selectedModel}
-              modelOptions={MODEL_LIST}
+              modelOptions={modelOptions}
               onModelChange={setSelectedModel}
             />
           </div>

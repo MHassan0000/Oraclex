@@ -14,6 +14,9 @@ export type ModelProvider =
   | "z-ai"
   | "moonshot"
   | "openrouter"
+  | "nvidia"
+  | "liquid"
+  | "poolside"
   | "free";
 
 export type ModelConfig = {
@@ -93,34 +96,56 @@ export const MODELS: Record<string, ModelConfig> = {
     outputCostPer1k: 0.00028,
     supportsStreaming: true,
   },
-  // Free (for testing)
-  "mistralai/mistral-small-3.2-24b-instruct:free": {
-    id: "mistralai/mistral-small-3.2-24b-instruct:free",
-    name: "Mistral Small 3.2 24B (Free)",
-    provider: "mistral",
-    contextWindow: 96_000,
-    maxOutput: 8_192,
-    inputCostPer1k: 0,
-    outputCostPer1k: 0,
-    supportsStreaming: true,
-    isFree: true,
-  },
-  "openrouter/cypher-alpha:free": {
-    id: "openrouter/cypher-alpha:free",
-    name: "Cypher Alpha (Free)",
-    provider: "openrouter",
-    contextWindow: 32_768,
-    maxOutput: 8_192,
-    inputCostPer1k: 0,
-    outputCostPer1k: 0,
-    supportsStreaming: true,
-    isFree: true,
-  },
-  "deepseek/deepseek-r1-0528:free": {
-    id: "deepseek/deepseek-r1-0528:free",
-    name: "DeepSeek R1 0528 (Free)",
-    provider: "deepseek",
+  // Free OpenRouter models. The API route also loads the live catalog at runtime.
+  "openai/gpt-oss-20b:free": {
+    id: "openai/gpt-oss-20b:free",
+    name: "GPT OSS 20B (Free)",
+    provider: "openai",
     contextWindow: 131_072,
+    maxOutput: 8_192,
+    inputCostPer1k: 0,
+    outputCostPer1k: 0,
+    supportsStreaming: true,
+    isFree: true,
+  },
+  "moonshotai/kimi-k2.6:free": {
+    id: "moonshotai/kimi-k2.6:free",
+    name: "Kimi K2.6 (Free)",
+    provider: "moonshot",
+    contextWindow: 262_144,
+    maxOutput: 8_192,
+    inputCostPer1k: 0,
+    outputCostPer1k: 0,
+    supportsStreaming: true,
+    isFree: true,
+  },
+  "google/gemma-4-26b-a4b-it:free": {
+    id: "google/gemma-4-26b-a4b-it:free",
+    name: "Gemma 4 26B A4B IT (Free)",
+    provider: "google",
+    contextWindow: 262_144,
+    maxOutput: 8_192,
+    inputCostPer1k: 0,
+    outputCostPer1k: 0,
+    supportsStreaming: true,
+    isFree: true,
+  },
+  "meta-llama/llama-3.3-70b-instruct:free": {
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    name: "Llama 3.3 70B Instruct (Free)",
+    provider: "meta",
+    contextWindow: 131_072,
+    maxOutput: 8_192,
+    inputCostPer1k: 0,
+    outputCostPer1k: 0,
+    supportsStreaming: true,
+    isFree: true,
+  },
+  "nvidia/nemotron-3-nano-30b-a3b:free": {
+    id: "nvidia/nemotron-3-nano-30b-a3b:free",
+    name: "Nemotron 3 Nano 30B A3B (Free)",
+    provider: "nvidia",
+    contextWindow: 256_000,
     maxOutput: 8_192,
     inputCostPer1k: 0,
     outputCostPer1k: 0,
@@ -149,32 +174,10 @@ export const MODELS: Record<string, ModelConfig> = {
     supportsStreaming: true,
     isFree: true,
   },
-  "moonshotai/kimi-k2:free": {
-    id: "moonshotai/kimi-k2:free",
-    name: "Kimi K2 (Free)",
-    provider: "moonshot",
-    contextWindow: 131_072,
-    maxOutput: 8_192,
-    inputCostPer1k: 0,
-    outputCostPer1k: 0,
-    supportsStreaming: true,
-    isFree: true,
-  },
-  "google/gemma-3-27b-it:free": {
-    id: "google/gemma-3-27b-it:free",
-    name: "Gemma 3 27B IT (Free)",
-    provider: "google",
-    contextWindow: 96_000,
-    maxOutput: 8_192,
-    inputCostPer1k: 0,
-    outputCostPer1k: 0,
-    supportsStreaming: true,
-    isFree: true,
-  },
 } as const;
 
-export const DEFAULT_MODEL = "mistralai/mistral-small-3.2-24b-instruct:free";
-export const FALLBACK_MODEL = "qwen/qwen3-coder:free";
+export const DEFAULT_MODEL = "openai/gpt-oss-20b:free";
+export const FALLBACK_MODEL = "z-ai/glm-4.5-air:free";
 
 export const MODEL_LIST = Object.values(MODELS);
 export const MODEL_IDS = Object.keys(MODELS);
@@ -189,6 +192,13 @@ export function getModelsByProvider(provider: ModelProvider): ModelConfig[] {
 
 export function getFreeModelIds(): string[] {
   return MODEL_LIST.filter((model) => model.isFree).map((model) => model.id);
+}
+
+const FREE_OPENROUTER_MODEL_ID_PATTERN =
+  /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*:free$/i;
+
+export function isAllowedModelId(modelId: string): boolean {
+  return MODEL_IDS.includes(modelId) || FREE_OPENROUTER_MODEL_ID_PATTERN.test(modelId);
 }
 
 export function getModelFallbacks(modelId?: string): string[] {

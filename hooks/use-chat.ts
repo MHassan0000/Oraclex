@@ -98,7 +98,22 @@ export function useChat(options: UseChatOptions = {}) {
 
   useEffect(() => {
     setCurrentConversationId(options.activeConversationId ?? null);
-  }, [options.activeConversationId]);
+    if (!options.activeConversationId && options.initialMessages === undefined) {
+      setDbMessages([]);
+    }
+  }, [options.activeConversationId, options.initialMessages]);
+
+  useEffect(() => {
+    if (options.initialConversations) {
+      setDbConversations(options.initialConversations);
+    }
+  }, [options.initialConversations]);
+
+  useEffect(() => {
+    if (options.initialMessages) {
+      setDbMessages(options.initialMessages);
+    }
+  }, [options.initialMessages]);
 
   // ── Initial fetch ──
   useEffect(() => {
@@ -267,79 +282,95 @@ export function useChat(options: UseChatOptions = {}) {
             const decoder = new TextDecoder();
             let buffer = "";
             let fullContent = "";
+            let streamFinished = false;
 
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+            try {
+              while (!streamFinished) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() ?? "";
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() ?? "";
 
-              for (const line of lines) {
-                const event = parseSSEEvent(line);
-                if (!event) continue;
+                for (const line of lines) {
+                  const event = parseSSEEvent(line);
+                  if (!event) continue;
 
-                switch (event.type) {
-                  case "content":
-                    fullContent += event.content ?? "";
-                    setDbMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId ? { ...m, content: fullContent } : m,
-                      ),
-                    );
-                    break;
+                  switch (event.type) {
+                    case "content":
+                      fullContent += event.content ?? "";
+                      setDbMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === assistantId ? { ...m, content: fullContent } : m,
+                        ),
+                      );
+                      break;
 
-                  case "citation":
-                    if (event.citations) {
-                      setStreamCitations(event.citations);
-                    }
-                    break;
+                    case "citation":
+                      if (event.citations) {
+                        setStreamCitations(event.citations);
+                      }
+                      break;
 
-                  case "done":
-                    // Replace optimistic with real data
-                    setDbMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId
-                          ? {
-                              ...m,
-                              id: event.metadata?.messageId ?? m.id,
-                              content: fullContent,
-                              status: "complete" as const,
-                              model: event.metadata?.model ?? m.model,
-                              metadata: {
-                                citations: event.citations ?? [],
-                              },
-                            }
-                          : m,
-                      ),
-                    );
-                    // Replace optimistic user message
-                    setDbMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === optimisticUser.id
-                          ? {
-                              ...m,
-                              id: event.metadata?.userMessageId ?? m.id,
-                              status: "complete" as const,
-                            }
-                          : m,
-                      ),
-                    );
-                    if (event.citations) setStreamCitations(event.citations);
-                    break;
+                    case "done":
+                      // Replace optimistic rows with DB ids once the server persists them.
+                      setDbMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === assistantId
+                            ? {
+                                ...m,
+                                id: event.metadata?.messageId ?? m.id,
+                                content: fullContent,
+                                status: "complete" as const,
+                                model: event.metadata?.model ?? m.model,
+                                metadata: {
+                                  citations: event.citations ?? [],
+                                },
+                              }
+                            : m,
+                        ),
+                      );
+                      setDbMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === optimisticUser.id
+                            ? {
+                                ...m,
+                                id: event.metadata?.userMessageId ?? m.id,
+                                status: "complete" as const,
+                              }
+                            : m,
+                        ),
+                      );
+                      if (event.citations) setStreamCitations(event.citations);
+                      streamFinished = true;
+                      break;
 
-                  case "error":
-                    setDbMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId
-                          ? { ...m, content: event.error ?? "An error occurred", status: "error" as const }
-                          : m,
-                      ),
-                    );
-                    break;
+                    case "error":
+                      setDbMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === assistantId
+                            ? {
+                                ...m,
+                                content: event.error ?? "An error occurred",
+                                status: "error" as const,
+                              }
+                            : m,
+                        ),
+                      );
+                      streamFinished = true;
+                      break;
+                  }
+
+                  if (streamFinished) break;
                 }
               }
+
+              if (streamFinished) {
+                await reader.cancel().catch(() => undefined);
+              }
+            } finally {
+              reader.releaseLock();
             }
 
             // Ensure content is set if stream ended without done event
@@ -401,6 +432,7 @@ export function useChat(options: UseChatOptions = {}) {
   }, [dbMessages, currentConversationId, sendMessage]);
 
   const removeConversation = useCallback((id: string) => {
+    const previousConversations = dbConversations;
     setDbConversations((prev) => prev.filter((c) => c.id !== id));
     startTransition(async () => {
       try {
@@ -410,26 +442,46 @@ export function useChat(options: UseChatOptions = {}) {
           setDbMessages([]);
           router.push("/chat");
         }
+        router.refresh();
         appToast.success("Conversation deleted");
-      } catch { appToast.error("Failed to delete conversation"); }
+      } catch {
+        setDbConversations(previousConversations);
+        appToast.error("Failed to delete conversation");
+      }
     });
-  }, [currentConversationId, router]);
+  }, [currentConversationId, dbConversations, router]);
 
   const renameConversation = useCallback((id: string, title: string) => {
+    const previousConversations = dbConversations;
     setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
     startTransition(async () => {
-      try { await renameConversationAction(id, title); }
-      catch { appToast.error("Failed to rename conversation"); }
+      try {
+        const conversation = await renameConversationAction(id, title);
+        setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
+        router.refresh();
+      }
+      catch {
+        setDbConversations(previousConversations);
+        appToast.error("Failed to rename conversation");
+      }
     });
-  }, []);
+  }, [dbConversations, router]);
 
   const pinConversation = useCallback((id: string, pinned: boolean) => {
+    const previousConversations = dbConversations;
     setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned } : c)));
     startTransition(async () => {
-      try { await pinConversationAction(id, pinned); }
-      catch { appToast.error("Failed to pin conversation"); }
+      try {
+        const conversation = await pinConversationAction(id, pinned);
+        setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
+        router.refresh();
+      }
+      catch {
+        setDbConversations(previousConversations);
+        appToast.error("Failed to pin conversation");
+      }
     });
-  }, []);
+  }, [dbConversations, router]);
 
   return {
     conversations,

@@ -37,9 +37,10 @@ export function createSSEStream(options: {
 
       const reader = options.upstreamStream.getReader();
       let buffer = "";
+      let upstreamDone = false;
 
       try {
-        while (true) {
+        while (!upstreamDone) {
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -57,6 +58,10 @@ export function createSSEStream(options: {
             try {
               const parsed = JSON.parse(data);
               activeModel = parsed.model ?? activeModel;
+              if (parsed.done) {
+                upstreamDone = true;
+                break;
+              }
               const content = parsed.choices?.[0]?.delta?.content ?? parsed.content ?? "";
               if (content) {
                 fullContent += content;

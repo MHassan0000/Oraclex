@@ -102,8 +102,9 @@ export async function executeWorkflow(
     const message = error instanceof Error ? error.message : "Workflow execution failed";
     await finishAgentRun(agentRunId, "failed", message, state);
 
-    // Retry once on transient failures
-    if (state.retryCount < MAX_WORKFLOW_RETRIES) {
+    // Retry once on transient workflow failures, but do not double the delay when
+    // OpenRouter has already exhausted its model fallback chain.
+    if (state.retryCount < MAX_WORKFLOW_RETRIES && !message.includes("OpenRouter")) {
       state.retryCount++;
       console.warn(`Retrying workflow (attempt ${state.retryCount})...`);
       return executeWorkflow(conversationId, userId, userMessage, model, state.retryCount);
@@ -118,6 +119,8 @@ async function createAgentRun(
   userId: string,
   model: string,
 ): Promise<string | null> {
+  if (!userId) return null;
+
   try {
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
@@ -162,7 +165,7 @@ async function finishAgentRun(
         completed_at: new Date().toISOString(),
         error,
         metadata: {
-          model: state.model,
+          model: metadata?.model ?? state.model,
           currentNode: state.currentNode,
           nodeHistory: state.nodeHistory,
           citationsCount: state.citations.length,
@@ -183,6 +186,21 @@ async function finishAgentRun(
 async function buildFallbackResponse(state: WorkflowState): Promise<Response> {
   const fallbackState = await fallbackNode(state);
   const encoder = new TextEncoder();
+  const supabase = await createServerSupabaseClient();
+  const { data: assistantMsg } = await supabase
+    .from("messages")
+    .insert({
+      user_id: fallbackState.userId,
+      conversation_id: fallbackState.conversationId,
+      role: "assistant",
+      content: fallbackState.response,
+      status: "complete",
+      model: fallbackState.model,
+      metadata: { citations: [] },
+    })
+    .select("id")
+    .single();
+  const messageId = assistantMsg?.id as string | undefined;
 
   const fallbackStream = new ReadableStream({
     start(controller) {
@@ -193,7 +211,15 @@ async function buildFallbackResponse(state: WorkflowState): Promise<Response> {
         encoder.encode(`data: ${JSON.stringify({ content: fallbackState.response })}\n\n`),
       );
       controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
+        encoder.encode(
+          `data: ${JSON.stringify({
+            done: true,
+            messageId,
+            userMessageId: fallbackState.userMessageId ?? undefined,
+            model: fallbackState.model,
+            citations: [],
+          })}\n\n`,
+        ),
       );
       controller.close();
     },

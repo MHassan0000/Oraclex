@@ -360,6 +360,11 @@ export async function persistCompletion(
       .eq("id", state.assistantMessageId);
   }
 
+  await supabase
+    .from("conversations")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", state.conversationId);
+
   // Log usage
   const cost = calculateCost(state.model, inputTokens, outputTokens);
   await supabase.from("usage_logs").insert({
