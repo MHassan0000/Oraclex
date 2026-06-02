@@ -39,6 +39,7 @@ type ChatSidebarProps = {
   onRenameConversation?: (id: string, title: string) => void;
   onPinConversation?: (id: string, pinned: boolean) => void;
   isAdmin?: boolean;
+  minimal?: boolean;
 };
 
 export function ChatSidebar({
@@ -53,6 +54,7 @@ export function ChatSidebar({
   onRenameConversation,
   onPinConversation,
   isAdmin = false,
+  minimal = false,
 }: ChatSidebarProps) {
   const router = useRouter();
 
@@ -72,12 +74,14 @@ export function ChatSidebar({
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar/90 text-sidebar-foreground">
-      <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
-        <Brand name="Oraclex" label="Chat Studio" />
-        <ThemeToggle />
-      </div>
+      {!minimal ? (
+        <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
+          <Brand name="Oraclex" label="Chat Studio" />
+          <ThemeToggle />
+        </div>
+      ) : null}
 
-      <div className="px-6 pt-6">
+      <div className={cn("px-6", minimal ? "pt-5" : "pt-6")}>
         <Button className="w-full gap-2" onClick={handleNewChat}>
           <Plus className="h-4 w-4" />
           New chat
@@ -189,6 +193,7 @@ export function ChatSidebar({
       </div>
 
       {/* Bottom nav links */}
+      {!minimal ? (
       <div className="border-t border-border/60 px-6 py-4 space-y-1.5">
         <Link
           href="/knowledge"
@@ -209,6 +214,7 @@ export function ChatSidebar({
           </Link>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

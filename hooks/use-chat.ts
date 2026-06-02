@@ -10,7 +10,7 @@ import type { ChatConversation, ChatMessage } from "@/components/chat/chat-types
 import type { Citation, StreamMetadata } from "@/lib/streaming/types";
 import { parseSSEEvent } from "@/lib/streaming/types";
 import {
-  createChatAction,
+  createConversationAction,
   editMessageAction,
   deleteConversationAction,
   renameConversationAction,
@@ -72,6 +72,9 @@ export function useChat(options: UseChatOptions = {}) {
   );
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [streamCitations, setStreamCitations] = useState<Citation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(
+    options.activeConversationId ?? null,
+  );
   const [loading, setLoading] = useState(!options.initialConversations);
   const [error, setError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
@@ -92,6 +95,10 @@ export function useChat(options: UseChatOptions = {}) {
     }
     return uiMessages;
   }, [dbMessages, streamingId, streamCitations]);
+
+  useEffect(() => {
+    setCurrentConversationId(options.activeConversationId ?? null);
+  }, [options.activeConversationId]);
 
   // ── Initial fetch ──
   useEffect(() => {
@@ -121,14 +128,14 @@ export function useChat(options: UseChatOptions = {}) {
 
   // ── Load messages for active conversation ──
   useEffect(() => {
-    if (!options.activeConversationId || options.initialMessages) return;
+    if (!currentConversationId || options.initialMessages) return;
 
     async function loadMessages() {
       try {
         const { data, error: err } = await supabase
           .from("messages")
           .select("*")
-          .eq("conversation_id", options.activeConversationId!)
+          .eq("conversation_id", currentConversationId)
           .order("created_at", { ascending: true });
         if (err) throw err;
         setDbMessages((data ?? []) as Message[]);
@@ -137,7 +144,7 @@ export function useChat(options: UseChatOptions = {}) {
       }
     }
     loadMessages();
-  }, [supabase, options.activeConversationId, options.initialMessages]);
+  }, [supabase, currentConversationId, options.initialMessages]);
 
   // ── Realtime ──
   useEffect(() => {
@@ -145,7 +152,11 @@ export function useChat(options: UseChatOptions = {}) {
       .channel("chat-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, (payload) => {
         if (payload.eventType === "INSERT") {
-          setDbConversations((prev) => [payload.new as Conversation, ...prev]);
+          setDbConversations((prev) =>
+            prev.some((conversation) => conversation.id === (payload.new as Conversation).id)
+              ? prev
+              : [payload.new as Conversation, ...prev],
+          );
         } else if (payload.eventType === "UPDATE") {
           setDbConversations((prev) =>
             prev.map((c) => (c.id === (payload.new as Conversation).id ? (payload.new as Conversation) : c)),
@@ -174,13 +185,18 @@ export function useChat(options: UseChatOptions = {}) {
 
       startTransition(async () => {
         try {
-          let conversationId = options.activeConversationId;
+          let conversationId = currentConversationId;
 
           if (!conversationId) {
-            const { conversation } = await createChatAction(content);
+            const conversation = await createConversationAction(
+              content.length > 50 ? `${content.slice(0, 50).trim()}...` : content,
+            );
             conversationId = conversation.id;
-            router.push(`/chat/${conversation.id}`);
-            return;
+            setCurrentConversationId(conversation.id);
+            setDbConversations((prev) =>
+              prev.some((item) => item.id === conversation.id) ? prev : [conversation, ...prev],
+            );
+            window.history.replaceState(null, "", `/chat/${conversation.id}`);
           }
 
           // Cancel existing stream
@@ -357,7 +373,7 @@ export function useChat(options: UseChatOptions = {}) {
         }
       });
     },
-    [options.activeConversationId, router],
+    [currentConversationId],
   );
 
   const editMessage = useCallback((id: string, content: string) => {
@@ -374,23 +390,27 @@ export function useChat(options: UseChatOptions = {}) {
     const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
     const lastUserMsg = userMessages[userMessages.length - 1];
 
-    if (lastUserMsg && options.activeConversationId) {
+    if (lastUserMsg && currentConversationId) {
       // Remove the assistant message and resend
       setDbMessages((prev) => prev.filter((m) => m.id !== id));
       sendMessage(lastUserMsg.content);
     }
-  }, [dbMessages, options.activeConversationId, sendMessage]);
+  }, [dbMessages, currentConversationId, sendMessage]);
 
   const removeConversation = useCallback((id: string) => {
     setDbConversations((prev) => prev.filter((c) => c.id !== id));
     startTransition(async () => {
       try {
         await deleteConversationAction(id);
-        if (options.activeConversationId === id) router.push("/chat");
+        if (currentConversationId === id) {
+          setCurrentConversationId(null);
+          setDbMessages([]);
+          router.push("/chat");
+        }
         appToast.success("Conversation deleted");
       } catch { appToast.error("Failed to delete conversation"); }
     });
-  }, [options.activeConversationId, router]);
+  }, [currentConversationId, router]);
 
   const renameConversation = useCallback((id: string, title: string) => {
     setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
@@ -411,6 +431,7 @@ export function useChat(options: UseChatOptions = {}) {
   return {
     conversations,
     messages,
+    currentConversationId,
     streamingId,
     loading,
     error,

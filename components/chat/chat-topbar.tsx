@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignJustify, PanelLeftClose, Sparkles } from "lucide-react";
+import { AlignJustify, MessagesSquare, PanelLeftClose } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AuthNav } from "@/components/auth/auth-nav";
@@ -35,7 +35,7 @@ export function ChatTopbar({ onOpenSidebar, onToggleSidebar, sidebarVisible }: C
             {sidebarVisible ? <PanelLeftClose className="h-5 w-5" /> : <AlignJustify className="h-5 w-5" />}
           </Button>
           <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground lg:flex">
-            <Sparkles className="h-4 w-4" />
+            <MessagesSquare className="h-4 w-4" />
             Chat Studio
           </div>
         </div>

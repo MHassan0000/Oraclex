@@ -1,4 +1,4 @@
-import { Activity, ArrowUpRight, Cpu, FileSearch, Sparkles } from "lucide-react";
+import { Activity, ArrowUpRight, Bot, Cpu, FileSearch } from "lucide-react";
 
 import { MetricCard } from "@/app/(root)/_components/metric-card";
 import { PipelineCard } from "@/app/(root)/_components/pipeline-card";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 
 const quickStats = [
-  { label: "Active agents", value: "12", icon: Sparkles },
+  { label: "Active agents", value: "12", icon: Bot },
   { label: "Retrieval runs", value: "3,482", icon: FileSearch },
   { label: "GPU minutes", value: "128", icon: Cpu },
   { label: "Signals", value: "98.7%", icon: Activity },

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ThemeProvider } from "next-themes";
 
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/lib/theme/theme-provider";
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -12,7 +12,6 @@ type ProvidersProps = {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider
-      attribute="class"
       defaultTheme="dark"
       enableSystem
       disableTransitionOnChange

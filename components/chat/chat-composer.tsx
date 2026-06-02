@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Paperclip, Send, Mic, Sparkles, CornerDownLeft, Square } from "lucide-react";
+import { BrainCircuit, Paperclip, Send, Mic, CornerDownLeft, Square } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ export function ChatComposer({
       className="w-full rounded-3xl border border-border/60 bg-card/80 p-4 shadow-lg backdrop-blur-sm"
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5" />
+        <BrainCircuit className="h-3.5 w-3.5" />
         Oraclex RAG Assistant
         {isStreaming ? (
           <motion.span
