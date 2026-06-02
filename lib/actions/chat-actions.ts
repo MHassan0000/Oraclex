@@ -14,6 +14,7 @@ import {
   updateMessage,
   deleteMessage,
 } from "@/lib/db/messages";
+import { sanitizeText } from "@/lib/security/schemas";
 import type { MessageRole } from "@/lib/db/types";
 
 // ──────────────────────────────────────────
@@ -23,10 +24,11 @@ import type { MessageRole } from "@/lib/db/types";
 export async function createConversationAction(title: string) {
   const user = await getUser();
   if (!user) throw new Error("Unauthorized");
+  const safeTitle = sanitizeText(title).slice(0, 255) || "New conversation";
 
   const conversation = await createConversation({
     user_id: user.id,
-    title,
+    title: safeTitle,
   });
 
   revalidatePath("/chat");
@@ -34,7 +36,10 @@ export async function createConversationAction(title: string) {
 }
 
 export async function renameConversationAction(id: string, title: string) {
-  const conversation = await updateConversation(id, { title });
+  const safeTitle = sanitizeText(title).slice(0, 255);
+  if (!safeTitle) throw new Error("Title required");
+
+  const conversation = await updateConversation(id, { title: safeTitle });
   revalidatePath("/chat");
   return conversation;
 }
@@ -61,12 +66,14 @@ export async function sendMessageAction(
 ) {
   const user = await getUser();
   if (!user) throw new Error("Unauthorized");
+  const safeContent = sanitizeText(content);
+  if (!safeContent) throw new Error("Message cannot be empty");
 
   const message = await createMessage({
     user_id: user.id,
     conversation_id: conversationId,
     role,
-    content,
+    content: safeContent,
     status: "complete",
   });
 
@@ -76,7 +83,10 @@ export async function sendMessageAction(
 }
 
 export async function editMessageAction(id: string, content: string) {
-  const message = await updateMessage(id, { content });
+  const safeContent = sanitizeText(content);
+  if (!safeContent) throw new Error("Message cannot be empty");
+
+  const message = await updateMessage(id, { content: safeContent });
   revalidatePath("/chat");
   return message;
 }
@@ -93,12 +103,14 @@ export async function deleteMessageAction(id: string) {
 export async function createChatAction(content: string) {
   const user = await getUser();
   if (!user) throw new Error("Unauthorized");
+  const safeContent = sanitizeText(content);
+  if (!safeContent) throw new Error("Message cannot be empty");
 
   // Generate a title from the first ~50 chars of the prompt
   const title =
-    content.length > 50
-      ? content.slice(0, 50).trim() + "…"
-      : content;
+    safeContent.length > 50
+      ? `${safeContent.slice(0, 50).trim()}...`
+      : safeContent;
 
   const conversation = await createConversation({
     user_id: user.id,
@@ -109,7 +121,7 @@ export async function createChatAction(content: string) {
     user_id: user.id,
     conversation_id: conversation.id,
     role: "user",
-    content,
+    content: safeContent,
     status: "complete",
   });
 

@@ -62,8 +62,8 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     ]);
 
   const usageLogs = usageRes.data ?? [];
-  const totalTokens = usageLogs.reduce((sum: number, row: any) => sum + (row.tokens ?? 0), 0);
-  const totalCost = usageLogs.reduce((sum: number, row: any) => sum + (row.cost_usd ?? 0), 0);
+  const totalTokens = usageLogs.reduce((sum: number, row: any) => sum + Number(row.tokens ?? 0), 0);
+  const totalCost = usageLogs.reduce((sum: number, row: any) => sum + Number(row.cost_usd ?? 0), 0);
 
   return {
     totalConversations: convRes.count ?? 0,
@@ -92,8 +92,8 @@ export async function getTokenUsageByDay(days: number = 30): Promise<TokenUsageB
     const date = (row as any).created_at?.slice(0, 10) ?? "";
     const existing = grouped.get(date) ?? { tokens: 0, cost: 0 };
     grouped.set(date, {
-      tokens: existing.tokens + ((row as any).tokens ?? 0),
-      cost: existing.cost + ((row as any).cost_usd ?? 0),
+      tokens: existing.tokens + Number((row as any).tokens ?? 0),
+      cost: existing.cost + Number((row as any).cost_usd ?? 0),
     });
   }
 
@@ -117,8 +117,8 @@ export async function getModelUsageStats(): Promise<ModelUsage[]> {
     const existing = grouped.get(model) ?? { count: 0, tokens: 0, cost: 0 };
     grouped.set(model, {
       count: existing.count + 1,
-      tokens: existing.tokens + ((row as any).tokens ?? 0),
-      cost: existing.cost + ((row as any).cost_usd ?? 0),
+      tokens: existing.tokens + Number((row as any).tokens ?? 0),
+      cost: existing.cost + Number((row as any).cost_usd ?? 0),
     });
   }
 

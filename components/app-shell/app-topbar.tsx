@@ -1,11 +1,10 @@
 "use client";
 
-import { AlignJustify, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { AlignJustify, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { AuthNav } from "@/components/auth/auth-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 import { MobileSidebar } from "./mobile-sidebar";
 
@@ -41,15 +40,7 @@ export function AppTopbar({ sidebarCollapsed, onToggleSidebar }: AppTopbarProps)
             Workspace
           </div>
         </div>
-        <div className="hidden min-w-0 flex-1 items-center justify-center md:flex">
-          <div className="relative w-full max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search docs, runs, or agents"
-              className="pl-9"
-            />
-          </div>
-        </div>
+        <div className="min-w-0 flex-1" />
         <div className="flex items-center gap-2">
           <AuthNav />
           <ThemeToggle />

@@ -128,14 +128,14 @@ export function useChat(options: UseChatOptions = {}) {
 
   // ── Load messages for active conversation ──
   useEffect(() => {
-    if (!currentConversationId || options.initialMessages) return;
+    if (!options.activeConversationId || options.initialMessages) return;
 
     async function loadMessages() {
       try {
         const { data, error: err } = await supabase
           .from("messages")
           .select("*")
-          .eq("conversation_id", currentConversationId)
+          .eq("conversation_id", options.activeConversationId!)
           .order("created_at", { ascending: true });
         if (err) throw err;
         setDbMessages((data ?? []) as Message[]);
@@ -144,7 +144,7 @@ export function useChat(options: UseChatOptions = {}) {
       }
     }
     loadMessages();
-  }, [supabase, currentConversationId, options.initialMessages]);
+  }, [supabase, options.activeConversationId, options.initialMessages]);
 
   // ── Realtime ──
   useEffect(() => {
@@ -319,7 +319,11 @@ export function useChat(options: UseChatOptions = {}) {
                     setDbMessages((prev) =>
                       prev.map((m) =>
                         m.id === optimisticUser.id
-                          ? { ...m, status: "complete" as const }
+                          ? {
+                              ...m,
+                              id: event.metadata?.userMessageId ?? m.id,
+                              status: "complete" as const,
+                            }
                           : m,
                       ),
                     );

@@ -34,6 +34,7 @@ export type Citation = {
 
 export type StreamMetadata = {
   messageId?: string;
+  userMessageId?: string;
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
@@ -78,6 +79,7 @@ export function parseSSEEvent(line: string): StreamEvent | null {
         type: "done",
         metadata: {
           messageId: parsed.messageId,
+          userMessageId: parsed.userMessageId,
           model: parsed.model,
           inputTokens: parsed.inputTokens,
           outputTokens: parsed.outputTokens,

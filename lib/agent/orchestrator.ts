@@ -16,6 +16,7 @@ import {
 import { createSSEStream, sseResponse } from "@/lib/streaming/sse-stream";
 import type { StreamMetadata } from "@/lib/streaming/types";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const MAX_WORKFLOW_RETRIES = 1;
 
@@ -36,11 +37,13 @@ export async function executeWorkflow(
   model: string = DEFAULT_MODEL,
 ): Promise<Response> {
   let state = createWorkflowState(conversationId, userId, userMessage, model);
+  const agentRunId = await createAgentRun(conversationId, userId, model);
 
   try {
     // ── Phase 1: Input processing ──
     state = await inputProcessingNode(state);
     if (state.status === "error") {
+      await finishAgentRun(agentRunId, "failed", state.error ?? "Input processing failed", state);
       return buildFallbackResponse(state);
     }
 
@@ -72,6 +75,7 @@ export async function executeWorkflow(
       upstreamStream,
       citations: state.citations,
       messageId: state.assistantMessageId ?? undefined,
+      userMessageId: state.userMessageId ?? undefined,
       model: state.model,
       onComplete: async (fullContent, metadata) => {
         await persistCompletion(
@@ -83,12 +87,15 @@ export async function executeWorkflow(
           },
           fullContent,
         );
+        await finishAgentRun(agentRunId, "succeeded", null, state, metadata);
       },
     });
 
     return sseResponse(sseStream);
   } catch (error) {
     console.error("Workflow execution failed:", error);
+    const message = error instanceof Error ? error.message : "Workflow execution failed";
+    await finishAgentRun(agentRunId, "failed", message, state);
 
     // Retry once on transient failures
     if (state.retryCount < MAX_WORKFLOW_RETRIES) {
@@ -98,6 +105,70 @@ export async function executeWorkflow(
     }
 
     return buildFallbackResponse(state);
+  }
+}
+
+async function createAgentRun(
+  conversationId: string,
+  userId: string,
+  model: string,
+): Promise<string | null> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("agent_runs")
+      .insert({
+        user_id: userId,
+        conversation_id: conversationId,
+        status: "running",
+        started_at: new Date().toISOString(),
+        metadata: { model },
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.warn("Failed to create agent run:", error.message);
+      return null;
+    }
+
+    return data?.id ?? null;
+  } catch (error) {
+    console.warn("Failed to create agent run:", error);
+    return null;
+  }
+}
+
+async function finishAgentRun(
+  id: string | null,
+  status: "succeeded" | "failed",
+  error: string | null,
+  state: WorkflowState,
+  metadata?: StreamMetadata,
+) {
+  if (!id) return;
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    await supabase
+      .from("agent_runs")
+      .update({
+        status,
+        completed_at: new Date().toISOString(),
+        error,
+        metadata: {
+          model: state.model,
+          currentNode: state.currentNode,
+          nodeHistory: state.nodeHistory,
+          citationsCount: state.citations.length,
+          retrievedChunks: state.retrievedChunks.length,
+          latencyMs: metadata?.latencyMs ?? state.latencyMs,
+        },
+      })
+      .eq("id", id)
+      .eq("user_id", state.userId);
+  } catch (updateError) {
+    console.warn("Failed to update agent run:", updateError);
   }
 }
 

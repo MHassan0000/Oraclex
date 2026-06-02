@@ -8,7 +8,7 @@ import {
   rerankResults,
   compressContext,
 } from "@/lib/rag/retrieve";
-import { createStreamingCompletion, calculateCost, type ChatCompletionMessage } from "@/lib/ai/openrouter";
+import { createStreamingCompletion, calculateCost, estimateTokens, type ChatCompletionMessage } from "@/lib/ai/openrouter";
 import {
   type WorkflowState,
   type WorkflowNode,
@@ -326,6 +326,16 @@ export async function persistCompletion(
   fullContent: string,
 ): Promise<void> {
   const supabase = await createServerSupabaseClient();
+  const inputTokens =
+    state.inputTokens ||
+    estimateTokens(
+      [
+        state.systemPrompt,
+        ...state.conversationHistory.map((message) => message.content),
+        state.userMessage,
+      ].join("\n"),
+    );
+  const outputTokens = state.outputTokens || estimateTokens(fullContent);
 
   // Update assistant message
   if (state.assistantMessageId) {
@@ -334,6 +344,9 @@ export async function persistCompletion(
       .update({
         content: fullContent,
         status: "complete",
+        token_count: inputTokens + outputTokens,
+        prompt_tokens: inputTokens,
+        completion_tokens: outputTokens,
         metadata: {
           citations: state.citations.map((c) => ({
             id: c.id,
@@ -347,13 +360,13 @@ export async function persistCompletion(
   }
 
   // Log usage
-  const cost = calculateCost(state.model, state.inputTokens, state.outputTokens);
+  const cost = calculateCost(state.model, inputTokens, outputTokens);
   await supabase.from("usage_logs").insert({
     user_id: state.userId,
     conversation_id: state.conversationId,
     message_id: state.assistantMessageId,
     event_type: "chat_completion",
-    tokens: (state.inputTokens || 0) + (state.outputTokens || 0),
+    tokens: inputTokens + outputTokens,
     cost_usd: cost,
     metadata: {
       model: state.model,

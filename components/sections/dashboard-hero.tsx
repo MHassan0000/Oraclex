@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -31,11 +32,15 @@ export function DashboardHero() {
           </p>
         </MotionDiv>
         <MotionDiv variants={fadeInUp} className="flex flex-wrap gap-3">
-          <Button className="gap-2">
-            Launch chat studio
-            <ArrowUpRight className="h-4 w-4" />
+          <Button asChild className="gap-2">
+            <Link href="/chat">
+              Launch chat studio
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </Button>
-          <Button variant="outline">View pipelines</Button>
+          <Button asChild variant="outline">
+            <Link href="/retrieval">View pipelines</Link>
+          </Button>
         </MotionDiv>
       </MotionDiv>
     </section>

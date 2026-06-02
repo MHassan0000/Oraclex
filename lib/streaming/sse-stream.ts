@@ -10,6 +10,7 @@ export function createSSEStream(options: {
   upstreamStream: ReadableStream<Uint8Array>;
   citations?: Citation[];
   messageId?: string;
+  userMessageId?: string;
   model?: string;
   onComplete?: (fullContent: string, metadata: StreamMetadata) => Promise<void>;
 }): ReadableStream<Uint8Array> {
@@ -70,6 +71,7 @@ export function createSSEStream(options: {
         // Build final metadata
         const metadata: StreamMetadata = {
           messageId: options.messageId,
+          userMessageId: options.userMessageId,
           model: options.model,
           latencyMs: Date.now() - startTime,
         };
@@ -89,6 +91,7 @@ export function createSSEStream(options: {
             `data: ${JSON.stringify({
               done: true,
               messageId: options.messageId,
+              userMessageId: options.userMessageId,
               model: options.model,
               latencyMs: metadata.latencyMs,
               citations: options.citations?.map((c) => ({

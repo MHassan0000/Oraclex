@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { BrainCircuit, Paperclip, Send, Mic, CornerDownLeft, Square } from "lucide-react";
+import { BrainCircuit, Send, CornerDownLeft, Square } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -108,12 +108,6 @@ export function ChatComposer({
           </div>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <Button variant="outline" size="icon" aria-label="Attach file" disabled={disabled}>
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" aria-label="Voice input" disabled={disabled}>
-            <Mic className="h-4 w-4" />
-          </Button>
           {isStreaming ? (
             <Button
               className="h-12 w-12 rounded-2xl bg-destructive hover:bg-destructive/90"

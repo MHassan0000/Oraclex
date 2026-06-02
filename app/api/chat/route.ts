@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth/session";
 import { executeWorkflow } from "@/lib/agent/orchestrator";
-import { DEFAULT_MODEL } from "@/lib/ai/models";
+import { DEFAULT_MODEL, MODEL_IDS } from "@/lib/ai/models";
 import { chatMessageSchema } from "@/lib/security/schemas";
 import { validateRequestBody } from "@/lib/security/server-utils";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/security/rate-limit";
@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
 
     const { conversationId, message, model } = validation.data;
 
-    return await executeWorkflow(conversationId, user.id, message, model ?? DEFAULT_MODEL);
+    const selectedModel = model && MODEL_IDS.includes(model) ? model : DEFAULT_MODEL;
+
+    return await executeWorkflow(conversationId, user.id, message, selectedModel);
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
