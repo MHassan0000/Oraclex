@@ -199,7 +199,7 @@ export function DocumentUpload() {
           label: "text-sm font-medium text-foreground",
           allowedContent: "text-xs text-muted-foreground mt-2",
           button: cn(
-            "bg-primary text-primary-foreground rounded-xl px-6 py-2",
+            "bg-primary text-primary-foreground cursor-pointer rounded-xl px-6 py-2",
             "hover:bg-primary/90 transition-colors",
           ),
           uploadIcon: "text-muted-foreground group-hover:text-primary transition-colors",

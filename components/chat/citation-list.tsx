@@ -23,7 +23,7 @@ export function CitationList({ citations, className }: CitationListProps) {
     <div className={cn("space-y-2", className)}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
       >
         <FileText className="h-3.5 w-3.5" />
         {citations.length} Source{citations.length !== 1 ? "s" : ""} Referenced
@@ -67,7 +67,7 @@ function CitationCard({ citation }: CitationCardProps) {
     >
       <button
         onClick={() => setShowPreview(!showPreview)}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+        className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left"
       >
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[0.6rem] font-bold text-primary">
           {citation.id.replace("cite-", "")}

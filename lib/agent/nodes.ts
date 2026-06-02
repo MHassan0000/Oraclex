@@ -259,9 +259,23 @@ export const responseGenerationNode = async (
 ): Promise<{ state: WorkflowState; stream: ReadableStream<Uint8Array> }> => {
   const next = advanceNode(state, "response_generation");
 
+  // Build messages array
+  const messages: ChatCompletionMessage[] = [
+    ...next.conversationHistory,
+    { role: "user", content: next.userMessage },
+  ];
+
+  const upstreamStream = await createStreamingCompletion({
+    model: next.model,
+    messages,
+    systemPrompt: next.systemPrompt,
+    temperature: 0.4,
+    stream: true,
+  });
+
   const supabase = await createServerSupabaseClient();
 
-  // Create placeholder assistant message
+  // Create placeholder assistant message only after the upstream stream is available.
   const { data: assistantMsg } = await supabase
     .from("messages")
     .insert({
@@ -276,20 +290,6 @@ export const responseGenerationNode = async (
     .single();
 
   const assistantMessageId = assistantMsg?.id ?? null;
-
-  // Build messages array
-  const messages: ChatCompletionMessage[] = [
-    ...next.conversationHistory,
-    { role: "user", content: next.userMessage },
-  ];
-
-  const upstreamStream = await createStreamingCompletion({
-    model: next.model,
-    messages,
-    systemPrompt: next.systemPrompt,
-    temperature: 0.4,
-    stream: true,
-  });
 
   return {
     state: {
@@ -344,6 +344,7 @@ export async function persistCompletion(
       .update({
         content: fullContent,
         status: "complete",
+        model: state.model,
         token_count: inputTokens + outputTokens,
         prompt_tokens: inputTokens,
         completion_tokens: outputTokens,

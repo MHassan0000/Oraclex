@@ -37,7 +37,7 @@ function CodeBlockWrapper({ children }: { children: React.ReactNode }) {
         onClick={handleCopy}
         className={cn(
           "absolute right-3 top-3 rounded-lg border border-border/60 bg-card/90 p-1.5",
-          "text-muted-foreground opacity-0 transition-all duration-200",
+          "cursor-pointer text-muted-foreground opacity-0 transition-all duration-200",
           "hover:bg-muted hover:text-foreground",
           "group-hover:opacity-100",
           copied && "text-green-500 opacity-100",

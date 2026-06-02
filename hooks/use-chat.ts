@@ -180,7 +180,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   // ── Send message with streaming ──
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, model?: string) => {
       if (!content.trim()) return;
 
       startTransition(async () => {
@@ -231,7 +231,7 @@ export function useChat(options: UseChatOptions = {}) {
             role: "assistant",
             status: "streaming",
             content: "",
-            model: null,
+            model: model ?? null,
             token_count: null,
             prompt_tokens: null,
             completion_tokens: null,
@@ -250,6 +250,7 @@ export function useChat(options: UseChatOptions = {}) {
               body: JSON.stringify({
                 conversationId,
                 message: content,
+                model,
                 stream: true,
               }),
               signal: controller.signal,
@@ -297,24 +298,22 @@ export function useChat(options: UseChatOptions = {}) {
 
                   case "done":
                     // Replace optimistic with real data
-                    if (event.metadata?.messageId) {
-                      setDbMessages((prev) =>
-                        prev.map((m) =>
-                          m.id === assistantId
-                            ? {
-                                ...m,
-                                id: event.metadata!.messageId!,
-                                content: fullContent,
-                                status: "complete" as const,
-                                model: event.metadata?.model ?? null,
-                                metadata: {
-                                  citations: event.citations ?? [],
-                                },
-                              }
-                            : m,
-                        ),
-                      );
-                    }
+                    setDbMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId
+                          ? {
+                              ...m,
+                              id: event.metadata?.messageId ?? m.id,
+                              content: fullContent,
+                              status: "complete" as const,
+                              model: event.metadata?.model ?? m.model,
+                              metadata: {
+                                citations: event.citations ?? [],
+                              },
+                            }
+                          : m,
+                      ),
+                    );
                     // Replace optimistic user message
                     setDbMessages((prev) =>
                       prev.map((m) =>
@@ -388,7 +387,7 @@ export function useChat(options: UseChatOptions = {}) {
     });
   }, []);
 
-  const regenerateMessage = useCallback((id: string) => {
+  const regenerateMessage = useCallback((id: string, model?: string) => {
     // Find the last user message before the assistant message
     const msgIndex = dbMessages.findIndex((m) => m.id === id);
     const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
@@ -397,7 +396,7 @@ export function useChat(options: UseChatOptions = {}) {
     if (lastUserMsg && currentConversationId) {
       // Remove the assistant message and resend
       setDbMessages((prev) => prev.filter((m) => m.id !== id));
-      sendMessage(lastUserMsg.content);
+      sendMessage(lastUserMsg.content, model);
     }
   }, [dbMessages, currentConversationId, sendMessage]);
 

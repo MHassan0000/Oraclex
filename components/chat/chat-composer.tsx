@@ -6,6 +6,7 @@ import { BrainCircuit, Send, CornerDownLeft, Square } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { ModelConfig } from "@/lib/ai/models";
 
 type ChatComposerProps = {
   onSend: (message: string) => void;
@@ -13,6 +14,9 @@ type ChatComposerProps = {
   disabled?: boolean;
   isStreaming?: boolean;
   placeholder?: string;
+  selectedModel: string;
+  modelOptions: ModelConfig[];
+  onModelChange: (model: string) => void;
 };
 
 export function ChatComposer({
@@ -21,6 +25,9 @@ export function ChatComposer({
   disabled,
   isStreaming,
   placeholder,
+  selectedModel,
+  modelOptions,
+  onModelChange,
 }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -70,6 +77,26 @@ export function ChatComposer({
             streaming…
           </motion.span>
         ) : null}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden sm:inline">Model</span>
+          <select
+            value={selectedModel}
+            disabled={disabled || isStreaming}
+            onChange={(event) => onModelChange(event.target.value)}
+            className={cn(
+              "max-w-[13rem] cursor-pointer rounded-xl border border-border/60 bg-background/80 px-2.5 py-1 text-xs text-foreground shadow-sm",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+            aria-label="Select AI model"
+          >
+            {modelOptions.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}{model.isFree ? " - Free" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="mt-3 flex gap-3">
         <div className="flex-1">

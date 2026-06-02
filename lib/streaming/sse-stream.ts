@@ -18,6 +18,7 @@ export function createSSEStream(options: {
   const decoder = new TextDecoder();
 
   let fullContent = "";
+  let activeModel = options.model;
   const startTime = Date.now();
 
   return new ReadableStream({
@@ -55,6 +56,7 @@ export function createSSEStream(options: {
 
             try {
               const parsed = JSON.parse(data);
+              activeModel = parsed.model ?? activeModel;
               const content = parsed.choices?.[0]?.delta?.content ?? parsed.content ?? "";
               if (content) {
                 fullContent += content;
@@ -72,7 +74,7 @@ export function createSSEStream(options: {
         const metadata: StreamMetadata = {
           messageId: options.messageId,
           userMessageId: options.userMessageId,
-          model: options.model,
+          model: activeModel,
           latencyMs: Date.now() - startTime,
         };
 
@@ -92,7 +94,7 @@ export function createSSEStream(options: {
               done: true,
               messageId: options.messageId,
               userMessageId: options.userMessageId,
-              model: options.model,
+              model: activeModel,
               latencyMs: metadata.latencyMs,
               citations: options.citations?.map((c) => ({
                 id: c.id,

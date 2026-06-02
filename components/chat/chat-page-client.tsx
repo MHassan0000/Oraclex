@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { ChatSearchResult } from "@/components/chat/chat-types";
 import type { Conversation, Message } from "@/lib/db/types";
+import { DEFAULT_MODEL, MODEL_LIST } from "@/lib/ai/models";
 
 type ChatPageClientProps = {
   activeConversationId?: string | null;
@@ -51,6 +52,7 @@ export function ChatPageClient({
 
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
   const [query, setQuery] = useState("");
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
 
   const hasMessages = messages.length > 0;
   const activeId = currentConversationId ?? activeConversationId ?? conversations[0]?.id ?? null;
@@ -132,7 +134,7 @@ export function ChatPageClient({
             ) : !hasMessages && !loading ? (
               <EmptyChatState
                 onStart={(prompt) =>
-                  sendMessage(prompt ?? "Give me a quick update on my RAG system.")
+                  sendMessage(prompt ?? "Give me a quick update on my RAG system.", selectedModel)
                 }
               />
             ) : (
@@ -141,7 +143,7 @@ export function ChatPageClient({
                 loading={loading}
                 streamingId={streamingId}
                 onEdit={(id, content) => setEditing({ id, content })}
-                onRegenerate={regenerateMessage}
+                onRegenerate={(id) => regenerateMessage(id, selectedModel)}
                 onCancelStream={cancelStream}
               />
             )}
@@ -149,10 +151,13 @@ export function ChatPageClient({
 
           <div className="border-t border-border/60 bg-background/70 p-4 sm:p-5">
             <ChatComposer
-              onSend={sendMessage}
+              onSend={(message) => sendMessage(message, selectedModel)}
               onCancel={cancelStream}
               disabled={isPending || !!streamingId}
               isStreaming={!!streamingId}
+              selectedModel={selectedModel}
+              modelOptions={MODEL_LIST}
+              onModelChange={setSelectedModel}
             />
           </div>
         </section>

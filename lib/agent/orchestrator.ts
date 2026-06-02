@@ -35,8 +35,12 @@ export async function executeWorkflow(
   userId: string,
   userMessage: string,
   model: string = DEFAULT_MODEL,
+  retryCount: number = 0,
 ): Promise<Response> {
-  let state = createWorkflowState(conversationId, userId, userMessage, model);
+  let state = {
+    ...createWorkflowState(conversationId, userId, userMessage, model),
+    retryCount,
+  };
   const agentRunId = await createAgentRun(conversationId, userId, model);
 
   try {
@@ -81,6 +85,7 @@ export async function executeWorkflow(
         await persistCompletion(
           {
             ...state,
+            model: metadata.model ?? state.model,
             inputTokens: metadata.inputTokens ?? 0,
             outputTokens: metadata.outputTokens ?? 0,
             latencyMs: metadata.latencyMs ?? 0,
@@ -101,7 +106,7 @@ export async function executeWorkflow(
     if (state.retryCount < MAX_WORKFLOW_RETRIES) {
       state.retryCount++;
       console.warn(`Retrying workflow (attempt ${state.retryCount})...`);
-      return executeWorkflow(conversationId, userId, userMessage, model);
+      return executeWorkflow(conversationId, userId, userMessage, model, state.retryCount);
     }
 
     return buildFallbackResponse(state);
