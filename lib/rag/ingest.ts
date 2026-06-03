@@ -3,7 +3,13 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { extractText, cleanText } from "@/lib/rag/extract";
 import { chunkText, chunkMarkdown } from "@/lib/rag/chunk";
-import { generateEmbeddingsBatch, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "@/lib/rag/embeddings";
+import {
+  generateEmbeddingsBatch,
+  formatEmbeddingForPgVector,
+  EMBEDDING_MODEL,
+  EMBEDDING_PROVIDER,
+  EMBEDDING_DIMENSIONS,
+} from "@/lib/rag/embeddings";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
 
 export type IngestionResult = {
@@ -96,12 +102,12 @@ export async function ingestDocument(
       const embeddingInserts = insertedChunks!.map((chunk, index) => ({
         user_id: userId,
         chunk_id: chunk.id,
-        embedding: embeddings[index] as unknown as string,
+        embedding: formatEmbeddingForPgVector(embeddings[index]),
         model: EMBEDDING_MODEL,
-        provider: "openai",
+        provider: EMBEDDING_PROVIDER,
         dimensions: EMBEDDING_DIMENSIONS,
         content_hash: null,
-        metadata: { documentId, chunkIndex: index },
+        metadata: { documentId, chunkIndex: index, provider: EMBEDDING_PROVIDER },
       }));
 
       const { error: embeddingError } = await supabase
@@ -129,6 +135,9 @@ export async function ingestDocument(
           chunks_count: chunks.length,
           embeddings_count: embeddingsCreated,
           retrieval_mode: retrievalMode,
+          embedding_model: EMBEDDING_MODEL,
+          embedding_provider: EMBEDDING_PROVIDER,
+          embedding_dimensions: EMBEDDING_DIMENSIONS,
           embedding_error: embeddingErrorMessage,
           ingested_at: new Date().toISOString(),
         },

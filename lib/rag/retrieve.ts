@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { generateEmbedding } from "@/lib/rag/embeddings";
+import { formatEmbeddingForPgVector, generateEmbedding } from "@/lib/rag/embeddings";
 import type { MatchChunkResult } from "@/lib/db/types";
 
 export type RetrievalOptions = {
@@ -36,7 +36,7 @@ export async function retrieveChunks(
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase.rpc("match_document_chunks", {
-      query_embedding: queryEmbedding as unknown as string,
+      query_embedding: formatEmbeddingForPgVector(queryEmbedding),
       match_count: matchCount,
       filter_document_id: filterDocumentId,
       filter_metadata: filterMetadata,
