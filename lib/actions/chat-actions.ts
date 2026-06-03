@@ -32,6 +32,7 @@ export async function createConversationAction(title: string) {
   });
 
   revalidatePath("/chat");
+  revalidatePath("/history");
   return conversation;
 }
 
@@ -41,6 +42,7 @@ export async function renameConversationAction(id: string, title: string) {
 
   const conversation = await updateConversation(id, { title: safeTitle });
   revalidatePath("/chat");
+  revalidatePath("/history");
   return conversation;
 }
 
@@ -50,11 +52,13 @@ export async function deleteConversationAction(id: string) {
 
   await deleteConversation(id, user.id);
   revalidatePath("/chat");
+  revalidatePath("/history");
 }
 
 export async function pinConversationAction(id: string, pinned: boolean) {
   const conversation = await togglePinConversation(id, pinned);
   revalidatePath("/chat");
+  revalidatePath("/history");
   return conversation;
 }
 

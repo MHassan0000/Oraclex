@@ -4,6 +4,7 @@ import {
   Boxes,
   Cpu,
   FileSearch,
+  History,
   LifeBuoy,
   Settings,
 } from "lucide-react";
@@ -24,6 +25,11 @@ export const appShellConfig = {
         title: "Chat Studio",
         href: "/chat",
         icon: Cpu,
+      },
+      {
+        title: "History",
+        href: "/history",
+        icon: History,
       },
       {
         title: "Knowledge",

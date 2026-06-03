@@ -1,9 +1,7 @@
 import { ChatPageClient } from "@/components/chat/chat-page-client";
-import { isAdminUser } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
-import { getConversations } from "@/lib/db/conversations";
 import { getMessages } from "@/lib/db/messages";
-import type { Conversation, Message } from "@/lib/db/types";
+import type { Message } from "@/lib/db/types";
 
 type ChatThreadPageProps = {
   params: Promise<{ id: string }>;
@@ -11,25 +9,20 @@ type ChatThreadPageProps = {
 
 export default async function ChatThreadPage({ params }: ChatThreadPageProps) {
   const { id } = await params;
-  const user = await requireUser(`/chat/${id}`);
+  await requireUser(`/chat/${id}`);
 
-  let conversations: Conversation[] = [];
   let messages: Message[] = [];
   try {
-    [conversations, messages] = await Promise.all([
-      getConversations(),
-      getMessages(id),
-    ]);
+    messages = await getMessages(id);
   } catch {
-    // Fall through with empty arrays
+    // Fall through with empty array
   }
 
   return (
     <ChatPageClient
       activeConversationId={id}
-      initialConversations={conversations}
+      initialConversations={[]}
       initialMessages={messages}
-      isAdmin={isAdminUser(user)}
     />
   );
 }

@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Menu, MessagesSquare, Network, Quote } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { History, MessagesSquare, Network, Plus, Quote } from "lucide-react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
-import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { useChat } from "@/hooks/use-chat";
 import { EmptyChatState } from "@/components/chat/empty-chat-state";
 import { ChatEditModal } from "@/components/chat/chat-edit-modal";
 import { ChatErrorState } from "@/components/chat/error-state";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import type { ChatSearchResult } from "@/components/chat/chat-types";
 import type { Conversation, Message } from "@/lib/db/types";
 import { DEFAULT_MODEL, MODEL_LIST, type ModelConfig } from "@/lib/ai/models";
 
@@ -20,17 +18,14 @@ type ChatPageClientProps = {
   activeConversationId?: string | null;
   initialConversations?: Conversation[];
   initialMessages?: Message[];
-  isAdmin?: boolean;
 };
 
 export function ChatPageClient({
   activeConversationId,
   initialConversations,
   initialMessages,
-  isAdmin = false,
 }: ChatPageClientProps) {
   const {
-    conversations,
     messages,
     streamingId,
     loading,
@@ -39,11 +34,7 @@ export function ChatPageClient({
     sendMessage,
     editMessage,
     regenerateMessage,
-    removeConversation,
-    renameConversation,
-    pinConversation,
     cancelStream,
-    currentConversationId,
   } = useChat({
     initialConversations,
     initialMessages,
@@ -51,7 +42,6 @@ export function ChatPageClient({
   });
 
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
-  const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [modelOptions, setModelOptions] = useState<ModelConfig[]>(MODEL_LIST);
 
@@ -84,59 +74,13 @@ export function ChatPageClient({
   }, []);
 
   const hasMessages = messages.length > 0;
-  const activeId = currentConversationId ?? activeConversationId ?? conversations[0]?.id ?? null;
-  const searchResults: ChatSearchResult[] = useMemo(() => {
-    if (!query.trim()) return [];
-    return conversations
-      .filter((conversation) =>
-        `${conversation.title} ${conversation.preview ?? ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-      )
-      .slice(0, 8)
-      .map((conversation) => ({
-        id: conversation.id,
-        title: conversation.title,
-        snippet: conversation.preview,
-        lastMessageAt: conversation.lastMessageAt,
-      }));
-  }, [conversations, query]);
-
-  const sidebar = (
-    <ChatSidebar
-      conversations={conversations}
-      activeConversationId={activeId}
-      query={query}
-      onQueryChange={setQuery}
-      searchResults={searchResults}
-      onDeleteConversation={removeConversation}
-      onRenameConversation={renameConversation}
-      onPinConversation={pinConversation}
-      isAdmin={isAdmin}
-      minimal
-    />
-  );
 
   return (
     <div className="min-w-0 overflow-hidden rounded-[2rem] border border-border/60 bg-card/40 shadow-xl shadow-black/5 backdrop-blur">
-      <div className="grid min-h-[calc(100vh-8.5rem)] min-w-0 grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="hidden min-h-0 border-r border-border/60 bg-sidebar/70 lg:block">
-          {sidebar}
-        </aside>
-
+      <div className="min-h-[calc(100vh-8.5rem)] min-w-0">
         <section className="flex min-h-0 min-w-0 flex-col">
           <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/60 bg-background/60 px-4 py-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open conversations">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-80 p-0">
-                  {sidebar}
-                </SheetContent>
-              </Sheet>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <MessagesSquare className="h-5 w-5" />
               </div>
@@ -147,13 +91,23 @@ export function ChatPageClient({
                 </p>
               </div>
             </div>
-            <div className="hidden shrink-0 items-center gap-2 text-xs text-muted-foreground sm:flex">
+            <div className="hidden shrink-0 items-center gap-2 text-xs text-muted-foreground md:flex">
               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-3 py-1">
                 <Network className="h-3.5 w-3.5" /> RAG
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-3 py-1">
                 <Quote className="h-3.5 w-3.5" /> Citations
               </span>
+              <Button asChild variant="ghost" size="sm" className="gap-2 rounded-full">
+                <Link href="/history">
+                  <History className="h-3.5 w-3.5" /> History
+                </Link>
+              </Button>
+              <Button asChild size="sm" className="gap-2 rounded-full">
+                <Link href="/chat">
+                  <Plus className="h-3.5 w-3.5" /> New chat
+                </Link>
+              </Button>
             </div>
           </div>
 
