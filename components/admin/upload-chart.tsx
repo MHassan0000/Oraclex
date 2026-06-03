@@ -17,7 +17,9 @@ type UploadChartProps = {
 };
 
 export function UploadChart({ data }: UploadChartProps) {
-  if (data.length === 0) {
+  const hasUploads = data.some((item) => item.uploads > 0);
+
+  if (!hasUploads) {
     return (
       <div className="flex h-[300px] items-center justify-center rounded-2xl border border-gray-200 bg-gray-50">
         <p className="text-sm text-gray-400">No upload data yet</p>
@@ -50,6 +52,7 @@ export function UploadChart({ data }: UploadChartProps) {
             wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
           />
           <Bar dataKey="ready" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Ready" />
+          <Bar dataKey="processing" stackId="a" fill="#6366f1" radius={[0, 0, 0, 0]} name="Processing" />
           <Bar dataKey="failed" stackId="a" fill="#ef4444" radius={[8, 8, 0, 0]} name="Failed" />
         </BarChart>
       </ResponsiveContainer>

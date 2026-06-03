@@ -23,7 +23,9 @@ function formatTokenValue(value: TooltipValueType | undefined) {
 }
 
 export function TokenUsageChart({ data }: TokenUsageChartProps) {
-  if (data.length === 0) {
+  const hasUsage = data.some((item) => item.tokens > 0);
+
+  if (!hasUsage) {
     return <ChartEmpty label="No token usage data yet" />;
   }
 

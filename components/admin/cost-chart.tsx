@@ -23,7 +23,9 @@ function formatCurrencyValue(value: TooltipValueType | undefined) {
 }
 
 export function CostChart({ data }: CostChartProps) {
-  if (data.length === 0) {
+  const hasCost = data.some((item) => item.cost > 0);
+
+  if (!hasCost) {
     return (
       <div className="flex h-[300px] items-center justify-center rounded-2xl border border-gray-200 bg-gray-50">
         <p className="text-sm text-gray-400">No cost data yet</p>

@@ -26,7 +26,12 @@ function formatNumericValue(value: TooltipValueType | undefined) {
 }
 
 export function ModelUsageChart({ data }: ModelUsageChartProps) {
-  if (data.length === 0) {
+  const chartData = data.slice(0, 8).map((item) => ({
+    ...item,
+    displayModel: item.model.length > 28 ? `${item.model.slice(0, 25)}...` : item.model,
+  }));
+
+  if (chartData.length === 0) {
     return (
       <div className="flex h-[300px] items-center justify-center rounded-2xl border border-gray-200 bg-gray-50">
         <p className="text-sm text-gray-400">No model usage data yet</p>
@@ -37,15 +42,22 @@ export function ModelUsageChart({ data }: ModelUsageChartProps) {
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <BarChart
+          data={chartData}
+          layout="vertical"
+          margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
-            dataKey="model"
-            tick={{ fontSize: 10, fill: "#6b7280" }}
+            type="number"
+            tick={{ fontSize: 11, fill: "#6b7280" }}
             stroke="#e5e7eb"
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "#6b7280" }}
+            dataKey="displayModel"
+            type="category"
+            width={150}
+            tick={{ fontSize: 10, fill: "#6b7280" }}
             stroke="#e5e7eb"
           />
           <Tooltip
@@ -61,9 +73,10 @@ export function ModelUsageChart({ data }: ModelUsageChartProps) {
               if (name === "tokens") return [formatNumericValue(value), "Tokens"];
               return [value, name];
             }}
+            labelFormatter={(_, payload) => payload?.[0]?.payload?.model ?? "Model"}
           />
-          <Bar dataKey="count" radius={[8, 8, 0, 0]} barSize={40}>
-            {data.map((_, index) => (
+          <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={18}>
+            {chartData.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Bar>

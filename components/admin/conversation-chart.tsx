@@ -16,7 +16,9 @@ type ConversationChartProps = {
 };
 
 export function ConversationChart({ data }: ConversationChartProps) {
-  if (data.length === 0) {
+  const hasActivity = data.some((item) => item.conversations > 0 || item.messages > 0);
+
+  if (!hasActivity) {
     return (
       <div className="flex h-[300px] items-center justify-center rounded-2xl border border-gray-200 bg-gray-50">
         <p className="text-sm text-gray-400">No conversation data yet</p>
