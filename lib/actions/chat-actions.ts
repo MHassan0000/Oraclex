@@ -31,8 +31,6 @@ export async function createConversationAction(title: string) {
     title: safeTitle,
   });
 
-  revalidatePath("/chat");
-  revalidatePath("/history");
   return conversation;
 }
 

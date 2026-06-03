@@ -20,6 +20,7 @@ export default async function ChatThreadPage({ params }: ChatThreadPageProps) {
 
   return (
     <ChatPageClient
+      key={id}
       activeConversationId={id}
       initialConversations={[]}
       initialMessages={messages}

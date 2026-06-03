@@ -6,6 +6,7 @@ export default async function ChatPage() {
 
   return (
     <ChatPageClient
+      key="new-chat"
       initialConversations={[]}
     />
   );

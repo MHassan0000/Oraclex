@@ -131,11 +131,10 @@ export function useChat(options: UseChatOptions = {}) {
   }, [dbMessages, streamingId, streamCitations]);
 
   useEffect(() => {
-    setCurrentConversationId(options.activeConversationId ?? null);
-    if (!options.activeConversationId && options.initialMessages === undefined) {
-      setDbMessages([]);
+    if (options.activeConversationId) {
+      setCurrentConversationId(options.activeConversationId);
     }
-  }, [options.activeConversationId, options.initialMessages]);
+  }, [options.activeConversationId]);
 
   useEffect(() => {
     if (options.initialConversations) {
@@ -251,7 +250,6 @@ export function useChat(options: UseChatOptions = {}) {
             setDbConversations((prev) =>
               prev.some((item) => item.id === conversation.id) ? prev : [activeConversation, ...prev],
             );
-            window.history.replaceState(null, "", `/chat/${conversation.id}`);
           } else {
             const now = new Date().toISOString();
             setDbConversations((prev) =>
@@ -306,6 +304,9 @@ export function useChat(options: UseChatOptions = {}) {
           setStreamCitations([]);
           setDbMessages((prev) => [...prev, optimisticUser, optimisticAssistant]);
           setSendPending(false);
+          if (!currentConversationId) {
+            window.history.replaceState(null, "", `/chat/${conversationId}`);
+          }
 
           try {
             const response = await fetch("/api/chat", {
