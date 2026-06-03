@@ -42,6 +42,16 @@ type ChatSidebarProps = {
   minimal?: boolean;
 };
 
+function formatConversationDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No activity";
+
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export function ChatSidebar({
   conversations,
   activeConversationId,
@@ -321,7 +331,7 @@ function ConversationRow({
           </p>
         ) : null}
         <div className="mt-2 flex items-center justify-between text-[0.7rem] text-muted-foreground">
-          <span>{new Date(conversation.lastMessageAt).toLocaleDateString()}</span>
+          <span>{formatConversationDate(conversation.lastMessageAt)}</span>
           {conversation.messageCount ? <span>{conversation.messageCount} msgs</span> : null}
         </div>
       </Link>

@@ -105,6 +105,7 @@ export function useChat(options: UseChatOptions = {}) {
   );
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [streamCitations, setStreamCitations] = useState<Citation[]>([]);
+  const [sendPending, setSendPending] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(
     options.activeConversationId ?? null,
   );
@@ -229,15 +230,19 @@ export function useChat(options: UseChatOptions = {}) {
   // ── Send message with streaming ──
   const sendMessage = useCallback(
     (content: string, model?: string) => {
-      if (!content.trim()) return;
+      const trimmedContent = content.trim();
+      if (!trimmedContent || sendPending || streamingId) return;
 
-      startTransition(async () => {
+      setSendPending(true);
+
+      void (async () => {
+        let assistantId: string | null = null;
         try {
           let conversationId = currentConversationId;
 
           if (!conversationId) {
             const conversation = await createConversationAction(
-              content.length > 50 ? `${content.slice(0, 50).trim()}...` : content,
+              trimmedContent.length > 50 ? `${trimmedContent.slice(0, 50).trim()}...` : trimmedContent,
             );
             const now = new Date().toISOString();
             const activeConversation = { ...conversation, last_message_at: now };
@@ -270,7 +275,7 @@ export function useChat(options: UseChatOptions = {}) {
             conversation_id: conversationId,
             role: "user",
             status: "complete",
-            content,
+            content: trimmedContent,
             model: null,
             token_count: null,
             prompt_tokens: null,
@@ -279,10 +284,9 @@ export function useChat(options: UseChatOptions = {}) {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
-          setDbMessages((prev) => [...prev, optimisticUser]);
 
           // Optimistic assistant placeholder
-          const assistantId = `temp-assistant-${Date.now()}`;
+          assistantId = `temp-assistant-${Date.now()}`;
           const optimisticAssistant: Message = {
             id: assistantId,
             user_id: "",
@@ -300,7 +304,8 @@ export function useChat(options: UseChatOptions = {}) {
           };
           setStreamingId(assistantId);
           setStreamCitations([]);
-          setDbMessages((prev) => [...prev, optimisticAssistant]);
+          setDbMessages((prev) => [...prev, optimisticUser, optimisticAssistant]);
+          setSendPending(false);
 
           try {
             const response = await fetch("/api/chat", {
@@ -308,7 +313,7 @@ export function useChat(options: UseChatOptions = {}) {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 conversationId,
-                message: content,
+                message: trimmedContent,
                 model,
                 stream: true,
               }),
@@ -456,15 +461,17 @@ export function useChat(options: UseChatOptions = {}) {
             );
           } finally {
             setStreamingId(null);
+            setSendPending(false);
             abortRef.current = null;
           }
         } catch (err) {
           appToast.error(err instanceof Error ? err.message : "Failed to send message");
-          setStreamingId(null);
+          setSendPending(false);
+          if (assistantId) setStreamingId(null);
         }
-      });
+      })();
     },
-    [currentConversationId],
+    [currentConversationId, sendPending, streamingId],
   );
 
   const editMessage = useCallback((id: string, content: string) => {
@@ -547,7 +554,7 @@ export function useChat(options: UseChatOptions = {}) {
     streamingId,
     loading,
     error,
-    isPending,
+    isPending: isPending || sendPending,
     sendMessage,
     editMessage,
     regenerateMessage,

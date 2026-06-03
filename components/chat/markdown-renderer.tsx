@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { Children, isValidElement, useCallback, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -12,6 +12,13 @@ type MarkdownRendererProps = {
   content: string;
   className?: string;
 };
+
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isValidElement<{ children?: React.ReactNode }>(node)) return extractText(node.props.children);
+  return "";
+}
 
 function CodeBlockWrapper({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
@@ -71,6 +78,14 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         rehypePlugins={[rehypeHighlight]}
         components={{
           pre: ({ children }) => <CodeBlockWrapper>{children}</CodeBlockWrapper>,
+          code: ({ children, className: codeClassName, node: _node, ...props }) => {
+            const text = Children.toArray(children).map(extractText).join("");
+            return (
+              <code className={codeClassName} {...props}>
+                {text}
+              </code>
+            );
+          },
         }}
       >
         {content}
