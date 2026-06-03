@@ -8,6 +8,7 @@ assertServer();
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   OPENROUTER_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().optional(),
   UPLOADTHING_TOKEN: z.string().min(1),
   ADMIN_USER_IDS: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
@@ -16,6 +17,7 @@ const serverEnvSchema = z.object({
 const parsed = serverEnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
   ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,

@@ -13,6 +13,8 @@ import { serverEnv } from "@/lib/env/server";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const MODEL_CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_LIVE_FREE_MODELS = 30;
+const OPENROUTER_RESPONSE_TIMEOUT_MS = 20_000;
+const OPENROUTER_STREAM_IDLE_TIMEOUT_MS = 30_000;
 
 type OpenRouterModel = {
   id: string;
@@ -128,6 +130,46 @@ function mergeModels(primary: ModelConfig[], secondary: ModelConfig[]): ModelCon
   }
 
   return merged;
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`OpenRouter timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function readWithTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("OpenRouter stream stalled before returning a response")),
+          OPENROUTER_STREAM_IDLE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 async function readOpenRouterError(response: Response): Promise<string> {
@@ -269,17 +311,21 @@ export async function createStreamingCompletion(
   for (const model of getModelFallbacks(modelId)) {
     const config = getModelConfig(model);
     try {
-      const attempt = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxTokens ?? config.maxOutput,
-          stream: true,
-        }),
-      });
+      const attempt = await fetchWithTimeout(
+        `${OPENROUTER_BASE_URL}/chat/completions`,
+        {
+          method: "POST",
+          headers: buildHeaders(),
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: options.temperature ?? 0.7,
+            max_tokens: options.maxTokens ?? config.maxOutput,
+            stream: true,
+          }),
+        },
+        OPENROUTER_RESPONSE_TIMEOUT_MS,
+      );
 
       if (attempt.ok) {
         response = attempt;
@@ -315,7 +361,7 @@ export async function createStreamingCompletion(
 
       try {
         while (true) {
-          const { done, value } = await reader.read();
+          const { done, value } = await readWithTimeout(reader);
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });

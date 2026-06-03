@@ -4,8 +4,8 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { serverEnv } from "@/lib/env/server";
 
 /**
- * Embedding service using OpenRouter-compatible embeddings.
- * Falls back to text-embedding-3-small via OpenRouter.
+ * Embedding service. Prefer a real OpenAI key for vector RAG; OpenRouter is
+ * retained as a best-effort fallback, but may not provide embeddings.
  */
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
@@ -13,12 +13,13 @@ const EMBEDDING_DIMENSIONS = 1536;
 const BATCH_SIZE = 100;
 
 function getEmbeddingsClient(): OpenAIEmbeddings {
+  const openAiKey = serverEnv.OPENAI_API_KEY;
+  const apiKey = openAiKey ?? serverEnv.OPENROUTER_API_KEY;
+
   return new OpenAIEmbeddings({
-    openAIApiKey: serverEnv.OPENROUTER_API_KEY,
+    openAIApiKey: apiKey,
     modelName: EMBEDDING_MODEL,
-    configuration: {
-      baseURL: "https://openrouter.ai/api/v1",
-    },
+    configuration: openAiKey ? undefined : { baseURL: "https://openrouter.ai/api/v1" },
     dimensions: EMBEDDING_DIMENSIONS,
   });
 }

@@ -13,6 +13,7 @@ export function createSSEStream(options: {
   userMessageId?: string;
   model?: string;
   onComplete?: (fullContent: string, metadata: StreamMetadata) => Promise<void>;
+  onError?: (error: string) => Promise<void>;
 }): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -75,6 +76,12 @@ export function createSSEStream(options: {
           }
         }
 
+        if (!fullContent.trim()) {
+          throw new Error(
+            "The selected AI provider returned no response. Free models are often rate-limited or temporarily unavailable; try another model or try again shortly.",
+          );
+        }
+
         // Build final metadata
         const metadata: StreamMetadata = {
           messageId: options.messageId,
@@ -118,6 +125,13 @@ export function createSSEStream(options: {
       } catch (error) {
         // Send error event
         const msg = error instanceof Error ? error.message : "Stream error";
+        if (options.onError) {
+          try {
+            await options.onError(msg);
+          } catch (err) {
+            console.error("Stream onError error:", err);
+          }
+        }
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`),
         );

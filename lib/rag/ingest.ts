@@ -83,27 +83,39 @@ export async function ingestDocument(
 
     if (chunkError) throw new Error(`Chunk insertion failed: ${chunkError.message}`);
 
-    // 6. Generate embeddings in batches
+    // 6. Generate embeddings in batches. If embeddings are unavailable, keep
+    // the chunks ready so retrieval can fall back to keyword matching.
     const chunkTexts = chunks.map((c) => c.content);
-    const embeddings = await generateEmbeddingsBatch(chunkTexts);
+    let embeddingsCreated = 0;
+    let retrievalMode = "keyword";
+    let embeddingErrorMessage: string | null = null;
 
-    // 7. Store embeddings
-    const embeddingInserts = insertedChunks!.map((chunk, index) => ({
-      user_id: userId,
-      chunk_id: chunk.id,
-      embedding: embeddings[index] as unknown as string,
-      model: EMBEDDING_MODEL,
-      provider: "openai",
-      dimensions: EMBEDDING_DIMENSIONS,
-      content_hash: null,
-      metadata: { documentId, chunkIndex: index },
-    }));
+    try {
+      const embeddings = await generateEmbeddingsBatch(chunkTexts);
 
-    const { error: embeddingError } = await supabase
-      .from("embeddings")
-      .insert(embeddingInserts);
+      const embeddingInserts = insertedChunks!.map((chunk, index) => ({
+        user_id: userId,
+        chunk_id: chunk.id,
+        embedding: embeddings[index] as unknown as string,
+        model: EMBEDDING_MODEL,
+        provider: "openai",
+        dimensions: EMBEDDING_DIMENSIONS,
+        content_hash: null,
+        metadata: { documentId, chunkIndex: index },
+      }));
 
-    if (embeddingError) throw new Error(`Embedding insertion failed: ${embeddingError.message}`);
+      const { error: embeddingError } = await supabase
+        .from("embeddings")
+        .insert(embeddingInserts);
+
+      if (embeddingError) throw new Error(`Embedding insertion failed: ${embeddingError.message}`);
+
+      embeddingsCreated = embeddings.length;
+      retrievalMode = "vector";
+    } catch (error) {
+      embeddingErrorMessage = error instanceof Error ? error.message : "Embedding generation failed";
+      console.warn("Embedding unavailable; document will use keyword retrieval:", embeddingErrorMessage);
+    }
 
     // 8. Update document status + token count
     const totalTokens = chunks.reduce((sum, c) => sum + c.tokenCount, 0);
@@ -115,7 +127,9 @@ export async function ingestDocument(
         token_count: totalTokens,
         metadata: {
           chunks_count: chunks.length,
-          embeddings_count: embeddings.length,
+          embeddings_count: embeddingsCreated,
+          retrieval_mode: retrievalMode,
+          embedding_error: embeddingErrorMessage,
           ingested_at: new Date().toISOString(),
         },
       })
@@ -125,7 +139,7 @@ export async function ingestDocument(
     return {
       documentId,
       chunksCreated: chunks.length,
-      embeddingsCreated: embeddings.length,
+      embeddingsCreated,
       totalTokens,
       durationMs: Date.now() - startTime,
     };

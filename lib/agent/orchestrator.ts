@@ -94,6 +94,21 @@ export async function executeWorkflow(
         );
         await finishAgentRun(agentRunId, "succeeded", null, state, metadata);
       },
+      onError: async (errorMessage) => {
+        const supabase = await createServerSupabaseClient();
+        if (state.assistantMessageId) {
+          await supabase
+            .from("messages")
+            .update({
+              content: errorMessage,
+              status: "error",
+              model: state.model,
+            })
+            .eq("id", state.assistantMessageId)
+            .eq("user_id", state.userId);
+        }
+        await finishAgentRun(agentRunId, "failed", errorMessage, state);
+      },
     });
 
     return sseResponse(sseStream);

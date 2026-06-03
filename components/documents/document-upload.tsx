@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -47,6 +48,7 @@ function getFileIcon(fileName: string) {
 }
 
 export function DocumentUpload() {
+  const router = useRouter();
   const [files, setFiles] = useState<FileUploadItem[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
 
@@ -68,7 +70,7 @@ export function DocumentUpload() {
         }
       } catch (error) {
         console.error("Ingestion error:", error);
-        // Don't throw - ingestion runs in background
+        throw error;
       }
     },
     [],
@@ -166,6 +168,7 @@ export function DocumentUpload() {
               );
 
               appToast.success(`"${serverData.fileName}" uploaded and processed`);
+              router.refresh();
             } catch (error) {
               const message = error instanceof Error ? error.message : "Upload failed";
               setFiles((prev) =>

@@ -2,7 +2,6 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { buildMemoryContext, formatMemoryForPrompt, maybeUpdateSummary } from "@/lib/ai/memory";
-import { generateMultiQueries } from "@/lib/ai/rag-service";
 import {
   multiQueryRetrieve,
   rerankResults,
@@ -83,14 +82,7 @@ export const memoryRetrievalNode: WorkflowNode = async (state) => {
 
 export const queryRewriteNode: WorkflowNode = async (state) => {
   const next = advanceNode(state, "query_rewrite");
-
-  try {
-    const queries = await generateMultiQueries(next.userMessage);
-    return { ...next, rewrittenQueries: queries };
-  } catch {
-    // Fallback to original query
-    return { ...next, rewrittenQueries: [next.userMessage] };
-  }
+  return { ...next, rewrittenQueries: [next.userMessage] };
 };
 
 // ──────────────────────────────────────────

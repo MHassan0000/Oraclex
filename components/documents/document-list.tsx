@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -68,9 +68,18 @@ function getStatusBadge(status: string) {
   }
 }
 
+function getRetrievalMode(doc: Document): string | null {
+  const mode = doc.metadata?.retrieval_mode;
+  return typeof mode === "string" ? mode : null;
+}
+
 export function DocumentList({ documents }: DocumentListProps) {
   const [items, setItems] = useState(documents);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(documents);
+  }, [documents]);
 
   function handleDelete(id: string) {
     setItems((prev) => prev.filter((d) => d.id !== id));
@@ -136,6 +145,11 @@ export function DocumentList({ documents }: DocumentListProps) {
                     {doc.title}
                   </p>
                   {getStatusBadge(doc.status)}
+                  {doc.status === "ready" && getRetrievalMode(doc) ? (
+                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                      {getRetrievalMode(doc)} retrieval
+                    </span>
+                  ) : null}
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                   {doc.file_name ? <span>{doc.file_name}</span> : null}

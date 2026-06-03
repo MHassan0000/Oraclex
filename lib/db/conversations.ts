@@ -26,7 +26,7 @@ export async function getConversations(): Promise<Conversation[]> {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as Conversation[];
+  return sortConversations((data ?? []) as Conversation[]);
 }
 
 /**
@@ -87,9 +87,102 @@ export async function updateConversation(
 /**
  * Hard-delete a conversation (cascade deletes messages, etc.).
  */
-export async function deleteConversation(id: string): Promise<void> {
+export async function deleteConversation(id: string, userId: string): Promise<void> {
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.from("conversations").delete().eq("id", id);
+
+  const { data: messages, error: messageError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", id)
+    .eq("user_id", userId);
+
+  if (messageError) throw messageError;
+
+  const messageIds = ((messages ?? []) as { id: string }[]).map((message) => message.id);
+
+  const { data: generations, error: generationError } = await supabase
+    .from("ai_generations")
+    .select("id")
+    .eq("conversation_id", id)
+    .eq("user_id", userId);
+
+  if (generationError) throw generationError;
+
+  const generationIds = new Set(
+    ((generations ?? []) as { id: string }[]).map((generation) => generation.id),
+  );
+
+  await supabase
+    .from("usage_logs")
+    .update({ conversation_id: null, message_id: null, generation_id: null })
+    .eq("conversation_id", id)
+    .eq("user_id", userId);
+
+  await supabase
+    .from("agent_runs")
+    .update({ conversation_id: null })
+    .eq("conversation_id", id)
+    .eq("user_id", userId);
+
+  await supabase
+    .from("ai_generations")
+    .update({ conversation_id: null })
+    .eq("conversation_id", id)
+    .eq("user_id", userId);
+
+  if (messageIds.length > 0) {
+    await supabase
+      .from("usage_logs")
+      .update({ message_id: null })
+      .in("message_id", messageIds)
+      .eq("user_id", userId);
+
+    const { data: messageGenerations } = await supabase
+      .from("ai_generations")
+      .select("id")
+      .in("message_id", messageIds)
+      .eq("user_id", userId);
+
+    const { data: promptGenerations } = await supabase
+      .from("ai_generations")
+      .select("id")
+      .in("prompt_message_id", messageIds)
+      .eq("user_id", userId);
+
+    for (const generation of (messageGenerations ?? []) as { id: string }[]) {
+      generationIds.add(generation.id);
+    }
+    for (const generation of (promptGenerations ?? []) as { id: string }[]) {
+      generationIds.add(generation.id);
+    }
+
+    await supabase
+      .from("ai_generations")
+      .update({ message_id: null })
+      .in("message_id", messageIds)
+      .eq("user_id", userId);
+
+    await supabase
+      .from("ai_generations")
+      .update({ prompt_message_id: null })
+      .in("prompt_message_id", messageIds)
+      .eq("user_id", userId);
+  }
+
+  if (generationIds.size > 0) {
+    await supabase
+      .from("usage_logs")
+      .update({ generation_id: null })
+      .in("generation_id", Array.from(generationIds))
+      .eq("user_id", userId);
+  }
+
+  const { error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+
   if (error) throw error;
 }
 
@@ -101,4 +194,14 @@ export async function togglePinConversation(
   pinned: boolean,
 ): Promise<Conversation> {
   return updateConversation(id, { pinned });
+}
+
+function sortConversations(conversations: Conversation[]): Conversation[] {
+  return [...conversations].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+
+    const aTime = Date.parse(a.last_message_at ?? a.created_at) || 0;
+    const bTime = Date.parse(b.last_message_at ?? b.created_at) || 0;
+    return bTime - aTime;
+  });
 }

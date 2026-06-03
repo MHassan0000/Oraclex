@@ -17,6 +17,8 @@ import {
   pinConversationAction,
 } from "@/lib/actions/chat-actions";
 
+const CLIENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
+
 // ── Helpers: DB row → UI type ──
 
 function toUiConversation(row: Conversation): ChatConversation {
@@ -40,6 +42,37 @@ function toUiMessage(row: Message): ChatMessage {
     model: row.model ?? undefined,
     citations: parseCitationsFromMetadata(row.metadata),
   };
+}
+
+function getConversationTime(row: Conversation): number {
+  return Date.parse(row.last_message_at ?? row.created_at) || 0;
+}
+
+function sortDbConversations(conversations: Conversation[]): Conversation[] {
+  return [...conversations].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return getConversationTime(b) - getConversationTime(a);
+  });
+}
+
+async function readStreamChunk(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("The AI provider did not send a response in time. Try again or select another model.")),
+          CLIENT_STREAM_IDLE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 function parseCitationsFromMetadata(
@@ -81,7 +114,7 @@ export function useChat(options: UseChatOptions = {}) {
   const abortRef = useRef<AbortController | null>(null);
 
   const conversations = useMemo(
-    () => dbConversations.map(toUiConversation),
+    () => sortDbConversations(dbConversations).map(toUiConversation),
     [dbConversations],
   );
 
@@ -206,12 +239,23 @@ export function useChat(options: UseChatOptions = {}) {
             const conversation = await createConversationAction(
               content.length > 50 ? `${content.slice(0, 50).trim()}...` : content,
             );
+            const now = new Date().toISOString();
+            const activeConversation = { ...conversation, last_message_at: now };
             conversationId = conversation.id;
             setCurrentConversationId(conversation.id);
             setDbConversations((prev) =>
-              prev.some((item) => item.id === conversation.id) ? prev : [conversation, ...prev],
+              prev.some((item) => item.id === conversation.id) ? prev : [activeConversation, ...prev],
             );
             window.history.replaceState(null, "", `/chat/${conversation.id}`);
+          } else {
+            const now = new Date().toISOString();
+            setDbConversations((prev) =>
+              prev.map((conversation) =>
+                conversation.id === conversationId
+                  ? { ...conversation, last_message_at: now }
+                  : conversation,
+              ),
+            );
           }
 
           // Cancel existing stream
@@ -286,7 +330,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             try {
               while (!streamFinished) {
-                const { done, value } = await reader.read();
+                const { done, value } = await readStreamChunk(reader);
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
@@ -384,14 +428,27 @@ export function useChat(options: UseChatOptions = {}) {
               );
             }
           } catch (err) {
-            if ((err as Error).name === "AbortError") return;
+            if ((err as Error).name === "AbortError") {
+              setDbMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, content: "Generation stopped.", status: "error" as const }
+                    : m,
+                ),
+              );
+              return;
+            }
+
+            const message = err instanceof Error
+              ? err.message
+              : "Unable to reach the AI service. Please try again.";
 
             setDbMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId
                   ? {
                       ...m,
-                      content: "Unable to reach the AI service. Please check your API key and try again.",
+                      content: message,
                       status: "error" as const,
                     }
                   : m,

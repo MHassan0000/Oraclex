@@ -45,7 +45,10 @@ export async function renameConversationAction(id: string, title: string) {
 }
 
 export async function deleteConversationAction(id: string) {
-  await deleteConversation(id);
+  const user = await getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await deleteConversation(id, user.id);
   revalidatePath("/chat");
 }
 

@@ -31,29 +31,93 @@ export async function retrieveChunks(
     similarityThreshold = 0.3,
   } = options;
 
-  // Generate embedding for the query
-  const queryEmbedding = await generateEmbedding(query);
+  try {
+    const queryEmbedding = await generateEmbedding(query);
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase.rpc("match_document_chunks", {
+      query_embedding: queryEmbedding as unknown as string,
+      match_count: matchCount,
+      filter_document_id: filterDocumentId,
+      filter_metadata: filterMetadata,
+    });
+
+    if (error) throw new Error(`Vector search failed: ${error.message}`);
+
+    const results = ((data ?? []) as MatchChunkResult[])
+      .filter((r) => r.similarity >= similarityThreshold)
+      .map((r, index) => ({
+        ...r,
+        rank: index + 1,
+      }));
+
+    if (results.length > 0) return results;
+  } catch (error) {
+    console.warn("Vector retrieval unavailable; using keyword retrieval:", error);
+  }
+
+  return retrieveChunksByKeyword({
+    query,
+    matchCount,
+    filterDocumentId,
+    filterMetadata,
+  });
+}
+
+async function retrieveChunksByKeyword(
+  options: Omit<RetrievalOptions, "similarityThreshold">,
+): Promise<RetrievalResult[]> {
+  const terms = options.query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 2);
+
+  if (terms.length === 0) return [];
 
   const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("document_chunks")
+    .select("id, document_id, content, metadata")
+    .order("created_at", { ascending: false })
+    .limit(1000);
 
-  const { data, error } = await supabase.rpc("match_document_chunks", {
-    query_embedding: queryEmbedding as unknown as string,
-    match_count: matchCount,
-    filter_document_id: filterDocumentId,
-    filter_metadata: filterMetadata,
-  });
+  if (options.filterDocumentId) {
+    query = query.eq("document_id", options.filterDocumentId);
+  }
 
-  if (error) throw new Error(`Vector search failed: ${error.message}`);
+  if (options.filterMetadata) {
+    query = query.contains("metadata", options.filterMetadata);
+  }
 
-  const results = (data ?? []) as MatchChunkResult[];
+  const { data, error } = await query;
+  if (error) throw new Error(`Keyword retrieval failed: ${error.message}`);
 
-  // Apply similarity threshold and add rank
-  return results
-    .filter((r) => r.similarity >= similarityThreshold)
-    .map((r, index) => ({
-      ...r,
-      rank: index + 1,
-    }));
+  return ((data ?? []) as Array<{
+    id: string;
+    document_id: string;
+    content: string;
+    metadata: Record<string, unknown>;
+  }>)
+    .map((chunk) => {
+      const lower = chunk.content.toLowerCase();
+      const matchedTerms = terms.filter((term) => lower.includes(term));
+      const exactPhraseBonus = lower.includes(options.query.toLowerCase()) ? 0.35 : 0;
+      const similarity = Math.min(0.95, matchedTerms.length / terms.length + exactPhraseBonus);
+
+      return {
+        chunk_id: chunk.id,
+        document_id: chunk.document_id,
+        content: chunk.content,
+        metadata: chunk.metadata ?? {},
+        similarity,
+        rank: 0,
+      };
+    })
+    .filter((result) => result.similarity > 0)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, options.matchCount ?? 10)
+    .map((result, index) => ({ ...result, rank: index + 1 }));
 }
 
 /**
