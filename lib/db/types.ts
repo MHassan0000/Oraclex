@@ -11,6 +11,9 @@ export type MessageRole = "system" | "user" | "assistant" | "tool";
 export type MessageStatus = "draft" | "streaming" | "complete" | "error";
 export type DocumentStatus = "processing" | "ready" | "failed" | "archived";
 export type AgentRunStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
+export type ReportSourceType = "current_chat" | "selected_documents" | "knowledge_base";
+export type ReportStatus = "completed" | "failed";
+export type ReportFormat = "pdf" | "markdown" | "csv";
 
 // ──────────────────────────────────────────
 // Row types
@@ -146,6 +149,41 @@ export type AgentRun = {
   completed_at: string | null;
   error: string | null;
   metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Report = {
+  id: string;
+  user_id: string;
+  title: string;
+  source_type: ReportSourceType;
+  conversation_id: string | null;
+  document_ids: string[];
+  formats: ReportFormat[];
+  status: ReportStatus;
+  executive_summary: string | null;
+  content_markdown: string;
+  structured: Record<string, unknown>;
+  source_citations: Record<string, unknown>[];
+  generation_time_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  export_count: number;
+  last_generated_at: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportExport = {
+  id: string;
+  user_id: string;
+  report_id: string;
+  format: ReportFormat;
+  storage_path: string;
+  file_size: number;
+  download_count: number;
   created_at: string;
   updated_at: string;
 };

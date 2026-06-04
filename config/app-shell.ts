@@ -3,6 +3,7 @@ import {
   BookOpen,
   Boxes,
   Cpu,
+  FileText,
   FileSearch,
   History,
   LifeBuoy,
@@ -35,6 +36,11 @@ export const appShellConfig = {
         title: "Knowledge",
         href: "/knowledge",
         icon: BookOpen,
+      },
+      {
+        title: "Reports",
+        href: "/reports",
+        icon: FileText,
       },
       {
         title: "Retrieval",

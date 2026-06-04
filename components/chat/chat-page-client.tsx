@@ -10,23 +10,27 @@ import { useChat } from "@/hooks/use-chat";
 import { EmptyChatState } from "@/components/chat/empty-chat-state";
 import { ChatEditModal } from "@/components/chat/chat-edit-modal";
 import { ChatErrorState } from "@/components/chat/error-state";
+import { GenerateReportDialog } from "@/components/reports/generate-report-dialog";
 import { Button } from "@/components/ui/button";
-import type { Conversation, Message } from "@/lib/db/types";
+import type { Conversation, Document, Message } from "@/lib/db/types";
 import { DEFAULT_MODEL, MODEL_LIST, type ModelConfig } from "@/lib/ai/models";
 
 type ChatPageClientProps = {
   activeConversationId?: string | null;
   initialConversations?: Conversation[];
   initialMessages?: Message[];
+  initialDocuments?: Document[];
 };
 
 export function ChatPageClient({
   activeConversationId,
   initialConversations,
   initialMessages,
+  initialDocuments = [],
 }: ChatPageClientProps) {
   const {
     messages,
+    currentConversationId,
     streamingId,
     loading,
     error,
@@ -104,10 +108,26 @@ export function ChatPageClient({
                   <History className="h-3.5 w-3.5" /> History
                 </Link>
               </Button>
+              <GenerateReportDialog
+                currentConversationId={currentConversationId}
+                documents={initialDocuments}
+              />
               <Button type="button" size="sm" className="gap-2 rounded-full" onClick={startNewChat}>
                 <Plus className="h-3.5 w-3.5" /> New chat
               </Button>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-background/50 px-4 py-3 md:hidden">
+            <Button asChild variant="ghost" size="sm" className="gap-2 rounded-full">
+              <Link href="/history">
+                <History className="h-3.5 w-3.5" /> History
+              </Link>
+            </Button>
+            <GenerateReportDialog currentConversationId={currentConversationId} documents={initialDocuments} />
+            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={startNewChat}>
+              <Plus className="h-3.5 w-3.5" /> New chat
+            </Button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
