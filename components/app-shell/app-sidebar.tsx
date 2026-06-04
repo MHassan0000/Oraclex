@@ -22,7 +22,7 @@ export function AppSidebar({ collapsed = false }: AppSidebarProps) {
       <div className={cn("flex h-full w-full flex-col gap-6 py-8", collapsed ? "px-4" : "px-6")}>
         {collapsed ? (
           <div className="flex justify-center">
-            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-foreground/10">
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-zinc-950 dark:bg-foreground/10">
               <Image
                 src="/images/oraclex-logo.png"
                 alt={appShellConfig.sidebar.brand.name}

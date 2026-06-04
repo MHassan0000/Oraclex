@@ -21,14 +21,14 @@ export function isAdminUser(user: User | null): boolean {
   const adminIds = parseList(serverEnv.ADMIN_USER_IDS);
   const adminEmails = parseList(serverEnv.ADMIN_EMAILS);
   const email = user.email?.toLowerCase();
-  const role = user.app_metadata?.role;
-  const roles = user.app_metadata?.roles;
+  const role = typeof user.app_metadata?.role === "string" ? user.app_metadata.role : undefined;
+  const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
 
   return (
     adminIds.has(user.id.toLowerCase()) ||
     (email ? adminEmails.has(email) : false) ||
-    role === "admin" ||
-    (Array.isArray(roles) && roles.includes("admin"))
+    role?.toLowerCase() === "admin" ||
+    roles.some((item) => typeof item === "string" && item.toLowerCase() === "admin")
   );
 }
 

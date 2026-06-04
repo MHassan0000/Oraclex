@@ -35,6 +35,7 @@ export function ChatPageClient({
     editMessage,
     regenerateMessage,
     cancelStream,
+    startNewChat,
   } = useChat({
     initialConversations,
     initialMessages,
@@ -103,10 +104,8 @@ export function ChatPageClient({
                   <History className="h-3.5 w-3.5" /> History
                 </Link>
               </Button>
-              <Button asChild size="sm" className="gap-2 rounded-full">
-                <Link href="/chat">
-                  <Plus className="h-3.5 w-3.5" /> New chat
-                </Link>
+              <Button type="button" size="sm" className="gap-2 rounded-full" onClick={startNewChat}>
+                <Plus className="h-3.5 w-3.5" /> New chat
               </Button>
             </div>
           </div>

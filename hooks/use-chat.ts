@@ -219,6 +219,19 @@ export function useChat(options: UseChatOptions = {}) {
     setStreamCitations([]);
   }, []);
 
+  const startNewChat = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setCurrentConversationId(null);
+    setDbMessages([]);
+    setStreamingId(null);
+    setStreamCitations([]);
+    setSendPending(false);
+    setError(null);
+    router.push("/chat");
+    router.refresh();
+  }, [router]);
+
   // ── Send message with streaming ──
   const sendMessage = useCallback(
     (content: string, model?: string) => {
@@ -574,5 +587,6 @@ export function useChat(options: UseChatOptions = {}) {
     renameConversation,
     pinConversation,
     cancelStream,
+    startNewChat,
   };
 }
