@@ -21,7 +21,6 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
-    setInitializing(true);
     supabase.auth.getUser().then(({ data }) => {
       if (mounted) {
         setUser(data.user ?? null);

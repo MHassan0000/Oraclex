@@ -1,7 +1,8 @@
 import { ChatPageClient } from "@/components/chat/chat-page-client";
 import { requireUser } from "@/lib/auth/session";
+import { getConversations } from "@/lib/db/conversations";
 import { getMessages } from "@/lib/db/messages";
-import type { Message } from "@/lib/db/types";
+import type { Conversation, Message } from "@/lib/db/types";
 
 type ChatThreadPageProps = {
   params: Promise<{ id: string }>;
@@ -11,18 +12,25 @@ export default async function ChatThreadPage({ params }: ChatThreadPageProps) {
   const { id } = await params;
   await requireUser(`/chat/${id}`);
 
+  let conversations: Conversation[] = [];
   let messages: Message[] = [];
+  try {
+    conversations = await getConversations();
+  } catch {
+    // Keep the thread usable even if history is temporarily unavailable.
+  }
+
   try {
     messages = await getMessages(id);
   } catch {
-    // Fall through with empty array
+    // Fall through with empty messages.
   }
 
   return (
     <ChatPageClient
       key={id}
       activeConversationId={id}
-      initialConversations={[]}
+      initialConversations={conversations}
       initialMessages={messages}
     />
   );

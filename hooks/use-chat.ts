@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { appToast } from "@/lib/client/toast";
 import type { Conversation, Message } from "@/lib/db/types";
 import type { ChatConversation, ChatMessage } from "@/components/chat/chat-types";
-import type { Citation, StreamMetadata } from "@/lib/streaming/types";
+import type { Citation } from "@/lib/streaming/types";
 import { parseSSEEvent } from "@/lib/streaming/types";
 import {
   createConversationAction,
@@ -129,24 +129,6 @@ export function useChat(options: UseChatOptions = {}) {
     }
     return uiMessages;
   }, [dbMessages, streamingId, streamCitations]);
-
-  useEffect(() => {
-    if (options.activeConversationId) {
-      setCurrentConversationId(options.activeConversationId);
-    }
-  }, [options.activeConversationId]);
-
-  useEffect(() => {
-    if (options.initialConversations) {
-      setDbConversations(options.initialConversations);
-    }
-  }, [options.initialConversations]);
-
-  useEffect(() => {
-    if (options.initialMessages) {
-      setDbMessages(options.initialMessages);
-    }
-  }, [options.initialMessages]);
 
   // ── Initial fetch ──
   useEffect(() => {

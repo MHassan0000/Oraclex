@@ -9,13 +9,8 @@ import {
   updateConversation,
   togglePinConversation,
 } from "@/lib/db/conversations";
-import {
-  createMessage,
-  updateMessage,
-  deleteMessage,
-} from "@/lib/db/messages";
+import { updateMessage } from "@/lib/db/messages";
 import { sanitizeText } from "@/lib/security/schemas";
-import type { MessageRole } from "@/lib/db/types";
 
 // ──────────────────────────────────────────
 // Conversation actions
@@ -35,10 +30,12 @@ export async function createConversationAction(title: string) {
 }
 
 export async function renameConversationAction(id: string, title: string) {
+  const user = await getUser();
+  if (!user) throw new Error("Unauthorized");
   const safeTitle = sanitizeText(title).slice(0, 255);
   if (!safeTitle) throw new Error("Title required");
 
-  const conversation = await updateConversation(id, { title: safeTitle });
+  const conversation = await updateConversation(id, user.id, { title: safeTitle });
   revalidatePath("/chat");
   revalidatePath("/history");
   return conversation;
@@ -54,7 +51,10 @@ export async function deleteConversationAction(id: string) {
 }
 
 export async function pinConversationAction(id: string, pinned: boolean) {
-  const conversation = await togglePinConversation(id, pinned);
+  const user = await getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const conversation = await togglePinConversation(id, user.id, pinned);
   revalidatePath("/chat");
   revalidatePath("/history");
   return conversation;
@@ -64,72 +64,13 @@ export async function pinConversationAction(id: string, pinned: boolean) {
 // Message actions
 // ──────────────────────────────────────────
 
-export async function sendMessageAction(
-  conversationId: string,
-  content: string,
-  role: MessageRole = "user",
-) {
-  const user = await getUser();
-  if (!user) throw new Error("Unauthorized");
-  const safeContent = sanitizeText(content);
-  if (!safeContent) throw new Error("Message cannot be empty");
-
-  const message = await createMessage({
-    user_id: user.id,
-    conversation_id: conversationId,
-    role,
-    content: safeContent,
-    status: "complete",
-  });
-
-  revalidatePath(`/chat/${conversationId}`);
-  revalidatePath("/chat");
-  return message;
-}
-
 export async function editMessageAction(id: string, content: string) {
-  const safeContent = sanitizeText(content);
-  if (!safeContent) throw new Error("Message cannot be empty");
-
-  const message = await updateMessage(id, { content: safeContent });
-  revalidatePath("/chat");
-  return message;
-}
-
-export async function deleteMessageAction(id: string) {
-  await deleteMessage(id);
-  revalidatePath("/chat");
-}
-
-/**
- * Creates a new conversation with the first user message in a single flow.
- * Returns both the conversation and the message.
- */
-export async function createChatAction(content: string) {
   const user = await getUser();
   if (!user) throw new Error("Unauthorized");
   const safeContent = sanitizeText(content);
   if (!safeContent) throw new Error("Message cannot be empty");
 
-  // Generate a title from the first ~50 chars of the prompt
-  const title =
-    safeContent.length > 50
-      ? `${safeContent.slice(0, 50).trim()}...`
-      : safeContent;
-
-  const conversation = await createConversation({
-    user_id: user.id,
-    title,
-  });
-
-  const message = await createMessage({
-    user_id: user.id,
-    conversation_id: conversation.id,
-    role: "user",
-    content: safeContent,
-    status: "complete",
-  });
-
+  const message = await updateMessage(id, user.id, { content: safeContent });
   revalidatePath("/chat");
-  return { conversation, message };
+  return message;
 }

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import type { AgentRunStatus, DocumentStatus } from "@/lib/db/types";
+import type { DocumentStatus } from "@/lib/db/types";
 
 // ──────────────────────────────────────────
 // Types

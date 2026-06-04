@@ -25,7 +25,6 @@ if (!parsed.success) {
     `Invalid client environment variables:\n${JSON.stringify(formatted, null, 2)}`,
   );
   if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
     console.error(error);
   }
   throw error;

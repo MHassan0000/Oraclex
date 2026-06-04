@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -74,22 +74,26 @@ function getRetrievalMode(doc: Document): string | null {
 }
 
 export function DocumentList({ documents }: DocumentListProps) {
-  const [items, setItems] = useState(documents);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setItems(documents);
-  }, [documents]);
+  const items = useMemo(
+    () => documents.filter((document) => !deletedIds.has(document.id)),
+    [deletedIds, documents],
+  );
 
   function handleDelete(id: string) {
-    setItems((prev) => prev.filter((d) => d.id !== id));
+    setDeletedIds((current) => new Set(current).add(id));
     startTransition(async () => {
       try {
         await deleteDocumentAction(id);
         appToast.success("Document deleted");
       } catch {
         appToast.error("Failed to delete document");
-        setItems(documents); // rollback
+        setDeletedIds((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
       }
     });
   }

@@ -119,7 +119,11 @@ export async function executeWorkflow(
 
     // Retry once on transient workflow failures, but do not double the delay when
     // OpenRouter has already exhausted its model fallback chain.
-    if (state.retryCount < MAX_WORKFLOW_RETRIES && !message.includes("OpenRouter")) {
+    if (
+      !state.userMessageId &&
+      state.retryCount < MAX_WORKFLOW_RETRIES &&
+      !message.includes("OpenRouter")
+    ) {
       state.retryCount++;
       console.warn(`Retrying workflow (attempt ${state.retryCount})...`);
       return executeWorkflow(conversationId, userId, userMessage, model, state.retryCount);

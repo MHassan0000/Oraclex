@@ -29,21 +29,6 @@ export async function getConversations(): Promise<Conversation[]> {
   return sortConversations((data ?? []) as Conversation[]);
 }
 
-/**
- * Get a single conversation by id.
- */
-export async function getConversation(id: string): Promise<Conversation | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error && error.code !== "PGRST116") throw error;
-  return (data as Conversation) ?? null;
-}
-
 // ──────────────────────────────────────────
 // Mutations
 // ──────────────────────────────────────────
@@ -70,6 +55,7 @@ export async function createConversation(
  */
 export async function updateConversation(
   id: string,
+  userId: string,
   updates: ConversationUpdate,
 ): Promise<Conversation> {
   const supabase = await createServerSupabaseClient();
@@ -77,6 +63,7 @@ export async function updateConversation(
     .from("conversations")
     .update(updates)
     .eq("id", id)
+    .eq("user_id", userId)
     .select()
     .single();
 
@@ -191,9 +178,10 @@ export async function deleteConversation(id: string, userId: string): Promise<vo
  */
 export async function togglePinConversation(
   id: string,
+  userId: string,
   pinned: boolean,
 ): Promise<Conversation> {
-  return updateConversation(id, { pinned });
+  return updateConversation(id, userId, { pinned });
 }
 
 function sortConversations(conversations: Conversation[]): Conversation[] {

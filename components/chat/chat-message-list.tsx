@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 
 import type { ChatMessage } from "@/components/chat/chat-types";
 import { ChatMessageCard } from "@/components/chat/chat-message";
@@ -25,11 +24,12 @@ export function ChatMessageList({
   onCancelStream,
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageContent = messages[messages.length - 1]?.content;
 
   useEffect(() => {
     if (!bottomRef.current) return;
     bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, streamingId, messages[messages.length - 1]?.content]);
+  }, [messages.length, streamingId, lastMessageContent]);
 
   if (loading) {
     return <ChatSkeleton />;

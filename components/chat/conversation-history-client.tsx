@@ -26,7 +26,6 @@ import {
   renameConversationAction,
 } from "@/lib/actions/chat-actions";
 import type { Conversation } from "@/lib/db/types";
-import { cn } from "@/lib/utils";
 
 type ConversationHistoryClientProps = {
   initialConversations: Conversation[];

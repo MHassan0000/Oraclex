@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -16,13 +16,6 @@ type ChatEditModalProps = {
 
 export function ChatEditModal({ open, initialValue, onCancel, onSave }: ChatEditModalProps) {
   const [value, setValue] = useState(initialValue);
-
-  // Sync internal state whenever the modal opens with a new value
-  useEffect(() => {
-    if (open) {
-      setValue(initialValue);
-    }
-  }, [open, initialValue]);
 
   function handleKeyDown(event: React.KeyboardEvent) {
     if (event.key === "Escape") {

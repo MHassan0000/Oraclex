@@ -147,6 +147,7 @@ export function ChatPageClient({
       </div>
 
       <ChatEditModal
+        key={editing?.id ?? "closed"}
         open={Boolean(editing)}
         initialValue={editing?.content ?? ""}
         onCancel={() => setEditing(null)}

@@ -11,6 +11,7 @@ import {
   EMBEDDING_DIMENSIONS,
 } from "@/lib/rag/embeddings";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
+import { validateFileSecure } from "@/lib/security/file-validation";
 
 export type IngestionResult = {
   documentId: string;
@@ -46,6 +47,18 @@ export async function ingestDocument(
     if (!response.ok) throw new Error(`Failed to fetch file: ${response.status}`);
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    const fileValidation = validateFileSecure(
+      fileName,
+      fileType,
+      buffer.byteLength,
+      arrayBuffer,
+    );
+    if (!fileValidation.valid) {
+      const message = fileValidation.error ?? "Invalid file content";
+      await updateDocumentStatusAction(documentId, "failed", message);
+      throw new Error(message);
+    }
 
     // 2. Extract text
     const rawText = await extractText(buffer, fileType, fileName);

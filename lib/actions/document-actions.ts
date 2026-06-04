@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth/session";
 import { documentCreateSchema } from "@/lib/security/schemas";
+import { validateFileSecure } from "@/lib/security/file-validation";
 import type { Document } from "@/lib/db/types";
 
 /**
@@ -26,6 +27,14 @@ export async function createDocumentAction(input: {
   }
 
   const documentInput = parsed.data;
+  const fileValidation = validateFileSecure(
+    documentInput.fileName,
+    documentInput.fileType,
+    documentInput.fileSize,
+  );
+  if (!fileValidation.valid) {
+    throw new Error(fileValidation.error ?? "Invalid document file");
+  }
 
   const supabase = await createServerSupabaseClient();
 

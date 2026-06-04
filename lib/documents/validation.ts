@@ -8,7 +8,6 @@ export const ALLOWED_MIME_TYPES = [
   "text/markdown",
   "text/csv",
   "text/x-markdown",
-  "application/octet-stream", // fallback for .md files
 ] as const;
 
 export const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".md", ".csv"] as const;
@@ -27,12 +26,21 @@ export type FileValidationResult = {
  */
 export function validateFile(file: File): FileValidationResult {
   const extension = getFileExtension(file.name);
-  const fileType = resolveFileType(file.type, extension);
+  const fileType = resolveDocumentFileType(file.type, extension);
 
   if (!ALLOWED_EXTENSIONS.includes(extension as typeof ALLOWED_EXTENSIONS[number])) {
     return {
       valid: false,
       error: `Unsupported file type: ${extension}. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      fileType,
+      extension,
+    };
+  }
+
+  if (!ALLOWED_MIME_TYPES.includes(fileType as typeof ALLOWED_MIME_TYPES[number])) {
+    return {
+      valid: false,
+      error: `Unsupported MIME type: ${fileType}.`,
       fileType,
       extension,
     };
@@ -59,38 +67,21 @@ export function validateFile(file: File): FileValidationResult {
   return { valid: true, fileType, extension };
 }
 
-/**
- * Extract metadata from a file.
- */
-export function extractFileMetadata(file: File) {
-  const extension = getFileExtension(file.name);
-  return {
-    fileName: file.name,
-    fileType: resolveFileType(file.type, extension),
-    fileSize: file.size,
-    extension,
-    lastModified: new Date(file.lastModified).toISOString(),
-  };
-}
-
-/**
- * Generate a checksum for duplicate detection.
- */
-export async function generateFileChecksum(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 // ── Helpers ──
 
-function getFileExtension(fileName: string): string {
+export function getFileExtension(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   return dot >= 0 ? fileName.slice(dot).toLowerCase() : "";
 }
 
-function resolveFileType(mimeType: string, extension: string): string {
+export function resolveDocumentFileType(
+  mimeType: string | null | undefined,
+  fileNameOrExtension: string,
+): string {
+  const extension = fileNameOrExtension.startsWith(".")
+    ? fileNameOrExtension.toLowerCase()
+    : getFileExtension(fileNameOrExtension);
+
   if (mimeType && mimeType !== "application/octet-stream") return mimeType;
   switch (extension) {
     case ".pdf": return "application/pdf";

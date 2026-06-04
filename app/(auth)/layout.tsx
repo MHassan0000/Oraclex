@@ -30,7 +30,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               </p>
             </div>
             <div className="mt-10 rounded-2xl border border-border/60 bg-card/80 p-5 text-sm text-muted-foreground">
-              "The auth flow is fast, consistent, and secure. Our team shipped in days."
+              &ldquo;The auth flow is fast, consistent, and secure. Our team shipped in days.&rdquo;
               <div className="mt-3 text-xs uppercase tracking-[0.3em]">Security Lead</div>
             </div>
           </div>

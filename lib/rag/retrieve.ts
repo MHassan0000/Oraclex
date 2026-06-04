@@ -6,6 +6,7 @@ import type { MatchChunkResult } from "@/lib/db/types";
 
 export type RetrievalOptions = {
   query: string;
+  userId?: string;
   matchCount?: number;
   filterDocumentId?: string | null;
   filterMetadata?: Record<string, unknown> | null;
@@ -25,6 +26,7 @@ export async function retrieveChunks(
 ): Promise<RetrievalResult[]> {
   const {
     query,
+    userId,
     matchCount = 10,
     filterDocumentId = null,
     filterMetadata = null,
@@ -59,6 +61,7 @@ export async function retrieveChunks(
   return retrieveChunksByKeyword({
     query,
     matchCount,
+    userId,
     filterDocumentId,
     filterMetadata,
   });
@@ -81,6 +84,10 @@ async function retrieveChunksByKeyword(
     .select("id, document_id, content, metadata")
     .order("created_at", { ascending: false })
     .limit(1000);
+
+  if (options.userId) {
+    query = query.eq("user_id", options.userId);
+  }
 
   if (options.filterDocumentId) {
     query = query.eq("document_id", options.filterDocumentId);

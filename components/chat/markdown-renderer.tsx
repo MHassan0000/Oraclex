@@ -78,7 +78,8 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         rehypePlugins={[rehypeHighlight]}
         components={{
           pre: ({ children }) => <CodeBlockWrapper>{children}</CodeBlockWrapper>,
-          code: ({ children, className: codeClassName, node: _node, ...props }) => {
+          code: ({ children, className: codeClassName, node, ...props }) => {
+            void node;
             const text = Children.toArray(children).map(extractText).join("");
             return (
               <code className={codeClassName} {...props}>

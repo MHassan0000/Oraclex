@@ -100,7 +100,6 @@ export const conversationIdSchema = z.object({
 export function sanitizeText(input: string): string {
   return input
     // Remove null bytes and other control chars except newlines/tabs
-    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     .trim();
 }
@@ -114,7 +113,6 @@ export function sanitizeFileName(name: string): string {
     .replace(/\.\./g, "")
     .replace(/[/\\]/g, "")
     // Remove null bytes
-    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1F\x7F]/g, "")
     .trim();
 }

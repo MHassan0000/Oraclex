@@ -1,6 +1,6 @@
 import "server-only";
 
-import * as pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 /**
  * Extract plain text from various file formats.
@@ -24,21 +24,20 @@ export async function extractText(
     case fileType === "text/plain" || extension === "txt":
       return buffer.toString("utf-8");
     default:
-      // Best-effort: try as UTF-8 text
-      return buffer.toString("utf-8");
+      throw new Error(`Unsupported file type for extraction: ${fileType || extension || "unknown"}`);
   }
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+
   try {
-    // pdf-parse is a CJS module; handle both default and namespace import shapes
-    const parsePdf = typeof (pdfParse as any).default === "function"
-      ? (pdfParse as any).default
-      : pdfParse;
-    const data = await parsePdf(buffer);
+    const data = await parser.getText();
     return cleanText(data.text);
   } catch (error) {
     throw new Error(`PDF extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  } finally {
+    await parser.destroy();
   }
 }
 
@@ -76,7 +75,6 @@ export function cleanText(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
-    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]+/g, " ")

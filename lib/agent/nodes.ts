@@ -7,7 +7,13 @@ import {
   rerankResults,
   compressContext,
 } from "@/lib/rag/retrieve";
-import { createStreamingCompletion, calculateCost, estimateTokens, type ChatCompletionMessage } from "@/lib/ai/openrouter";
+import {
+  createCompletion,
+  createStreamingCompletion,
+  calculateCost,
+  estimateTokens,
+  type ChatCompletionMessage,
+} from "@/lib/ai/openrouter";
 import {
   type WorkflowState,
   type WorkflowNode,
@@ -17,7 +23,26 @@ import {
 } from "@/lib/agent/workflow-state";
 import type { Citation } from "@/lib/streaming/types";
 
+const MAX_REWRITTEN_QUERIES = 4;
 
+function parseQueryExpansionOutput(output: string, originalQuery: string): string[] {
+  const seen = new Set<string>();
+  const queries: string[] = [];
+
+  for (const query of [originalQuery, ...output.split(/\r?\n/)]) {
+    const normalized = query
+      .replace(/^[-*]\s*/, "")
+      .replace(/^\d+[.)]\s*/, "")
+      .trim();
+
+    if (!normalized || seen.has(normalized.toLowerCase())) continue;
+    seen.add(normalized.toLowerCase());
+    queries.push(normalized);
+    if (queries.length >= MAX_REWRITTEN_QUERIES) break;
+  }
+
+  return queries.length > 0 ? queries : [originalQuery];
+}
 
 // ──────────────────────────────────────────
 // Node 1: Input Processing
@@ -47,7 +72,8 @@ export const inputProcessingNode: WorkflowNode = async (state) => {
   await supabase
     .from("conversations")
     .update({ last_message_at: new Date().toISOString() })
-    .eq("id", next.conversationId);
+    .eq("id", next.conversationId)
+    .eq("user_id", next.userId);
 
   return {
     ...next,
@@ -82,7 +108,25 @@ export const memoryRetrievalNode: WorkflowNode = async (state) => {
 
 export const queryRewriteNode: WorkflowNode = async (state) => {
   const next = advanceNode(state, "query_rewrite");
-  return { ...next, rewrittenQueries: [next.userMessage] };
+
+  try {
+    const result = await createCompletion({
+      model: next.model,
+      messages: [{ role: "user", content: next.userMessage }],
+      systemPrompt:
+        "Generate up to 3 concise semantic search queries for retrieving relevant chunks from a private document knowledge base. Include useful synonyms or alternate phrasing, but do not invent facts. Put each query on its own line and do not include explanations.",
+      temperature: 0.2,
+      maxTokens: 220,
+    });
+
+    return {
+      ...next,
+      rewrittenQueries: parseQueryExpansionOutput(result.content, next.userMessage),
+    };
+  } catch (err) {
+    console.warn("Query rewriting failed; using original query:", err);
+    return { ...next, rewrittenQueries: [next.userMessage] };
+  }
 };
 
 // ──────────────────────────────────────────
@@ -97,7 +141,10 @@ export const retrieverNode: WorkflowNode = async (state) => {
       ? next.rewrittenQueries
       : [next.userMessage];
 
-    const results = await multiQueryRetrieve(queries, { matchCount: 8 });
+    const results = await multiQueryRetrieve(queries, {
+      matchCount: 8,
+      userId: next.userId,
+    });
 
     const chunks: RetrievedChunk[] = results.map((r) => ({
       chunkId: r.chunk_id,
@@ -222,7 +269,8 @@ export const citationGeneratorNode: WorkflowNode = async (state) => {
     const { data: docs } = await supabase
       .from("documents")
       .select("id, title")
-      .in("id", docIds);
+      .in("id", docIds)
+      .eq("user_id", next.userId);
 
     docTitleMap = Object.fromEntries(
       (docs ?? []).map((d: { id: string; title: string }) => [d.id, d.title]),
@@ -349,13 +397,15 @@ export async function persistCompletion(
           })),
         },
       })
-      .eq("id", state.assistantMessageId);
+      .eq("id", state.assistantMessageId)
+      .eq("user_id", state.userId);
   }
 
   await supabase
     .from("conversations")
     .update({ last_message_at: new Date().toISOString() })
-    .eq("id", state.conversationId);
+    .eq("id", state.conversationId)
+    .eq("user_id", state.userId);
 
   // Log usage
   const cost = calculateCost(state.model, inputTokens, outputTokens);

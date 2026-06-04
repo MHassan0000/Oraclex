@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,8 +17,9 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  formatFileSize,
   ALLOWED_EXTENSIONS,
+  resolveDocumentFileType,
+  validateFile,
 } from "@/lib/documents/validation";
 import { createDocumentAction } from "@/lib/actions/document-actions";
 import { appToast } from "@/lib/client/toast";
@@ -47,10 +48,35 @@ function getFileIcon(fileName: string) {
   }
 }
 
+function matchesUploadItem(
+  item: FileUploadItem,
+  uploadId: string | undefined,
+  fileName: string,
+) {
+  if (uploadId) return item.id === uploadId;
+  return item.fileName === fileName && (item.status === "uploading" || item.status === "processing");
+}
+
 export function DocumentUpload() {
   const router = useRouter();
   const [files, setFiles] = useState<FileUploadItem[]>([]);
-  const [isDragActive, setIsDragActive] = useState(false);
+  const uploadIdsByNameRef = useRef<Map<string, string[]>>(new Map());
+
+  const rememberUpload = useCallback((fileName: string, id: string) => {
+    const existing = uploadIdsByNameRef.current.get(fileName) ?? [];
+    uploadIdsByNameRef.current.set(fileName, [...existing, id]);
+  }, []);
+
+  const takeUploadId = useCallback((fileName: string) => {
+    const existing = uploadIdsByNameRef.current.get(fileName) ?? [];
+    const [id, ...remaining] = existing;
+    if (remaining.length > 0) {
+      uploadIdsByNameRef.current.set(fileName, remaining);
+    } else {
+      uploadIdsByNameRef.current.delete(fileName);
+    }
+    return id;
+  }, []);
 
   const removeFile = useCallback((id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
@@ -100,8 +126,19 @@ export function DocumentUpload() {
       {/* Upload Zone */}
       <UploadDropzone
         endpoint="documentUploader"
+        onBeforeUploadBegin={(selectedFiles) => {
+          return selectedFiles.filter((file) => {
+            const validation = validateFile(file);
+            if (!validation.valid) {
+              appToast.error(`${file.name}: ${validation.error ?? "Invalid file"}`);
+              return false;
+            }
+            return true;
+          });
+        }}
         onUploadBegin={(fileName) => {
           const id = `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          rememberUpload(fileName, id);
           setFiles((prev) => [
             ...prev,
             {
@@ -132,12 +169,18 @@ export function DocumentUpload() {
               fileKey: string;
             };
 
+            const uploadId = takeUploadId(serverData.fileName);
+            const fileType = resolveDocumentFileType(
+              serverData.fileType,
+              serverData.fileName,
+            );
+
             try {
               // Create document record
               const doc = await createDocumentAction({
                 title: serverData.fileName.replace(/\.[^.]+$/, ""),
                 fileName: serverData.fileName,
-                fileType: serverData.fileType,
+                fileType,
                 storageUrl: serverData.fileUrl,
                 fileSize: serverData.fileSize,
               });
@@ -145,7 +188,7 @@ export function DocumentUpload() {
               // Update file status
               setFiles((prev) =>
                 prev.map((f) =>
-                  f.status === "uploading"
+                  matchesUploadItem(f, uploadId, serverData.fileName)
                     ? { ...f, status: "processing", progress: 95, documentId: doc.id }
                     : f,
                 ),
@@ -156,7 +199,7 @@ export function DocumentUpload() {
                 doc.id,
                 serverData.fileUrl,
                 serverData.fileName,
-                serverData.fileType,
+                fileType,
               );
 
               setFiles((prev) =>
@@ -173,7 +216,7 @@ export function DocumentUpload() {
               const message = error instanceof Error ? error.message : "Upload failed";
               setFiles((prev) =>
                 prev.map((f) =>
-                  f.status === "uploading" || f.status === "processing"
+                  matchesUploadItem(f, uploadId, serverData.fileName)
                     ? { ...f, status: "error", error: message }
                     : f,
                 ),

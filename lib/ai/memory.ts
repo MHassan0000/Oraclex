@@ -3,7 +3,6 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createCompletion, estimateTokens, type ChatCompletionMessage } from "@/lib/ai/openrouter";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
-import type { Message } from "@/lib/db/types";
 
 // ──────────────────────────────────────────
 // Constants
@@ -179,14 +178,6 @@ function trimToTokenBudget(
   summary: string | null,
   maxTokens: number,
 ): { messages: ChatCompletionMessage[]; totalTokens: number } {
-  let budget = maxTokens;
-
-  // Reserve tokens for the summary
-  if (summary) {
-    const summaryTokens = estimateTokens(summary);
-    budget -= summaryTokens;
-  }
-
   // Trim from the oldest messages first
   const trimmed: ChatCompletionMessage[] = [];
   let totalTokens = summary ? estimateTokens(summary) : 0;

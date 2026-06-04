@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Citation } from "@/lib/streaming/types";
