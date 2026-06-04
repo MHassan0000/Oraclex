@@ -26,13 +26,9 @@ function StatCard({ label, value, subtitle, icon, color }: StatCardProps) {
     <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-            {label}
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-400">{label}</p>
           <p className="mt-2 truncate text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle ? (
-            <p className="mt-1 line-clamp-2 text-xs text-gray-500">{subtitle}</p>
-          ) : null}
+          {subtitle ? <p className="mt-1 line-clamp-2 text-xs text-gray-500">{subtitle}</p> : null}
         </div>
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -81,11 +77,12 @@ export function StatsGrid({ stats }: StatsGridProps) {
     },
     {
       label: "Tokens Used",
-      value: stats.totalTokensUsed >= 1000000
-        ? `${(stats.totalTokensUsed / 1000000).toFixed(1)}M`
-        : stats.totalTokensUsed >= 1000
-          ? `${(stats.totalTokensUsed / 1000).toFixed(1)}k`
-          : stats.totalTokensUsed.toString(),
+      value:
+        stats.totalTokensUsed >= 1000000
+          ? `${(stats.totalTokensUsed / 1000000).toFixed(1)}M`
+          : stats.totalTokensUsed >= 1000
+            ? `${(stats.totalTokensUsed / 1000).toFixed(1)}k`
+            : stats.totalTokensUsed.toString(),
       icon: <Activity className="h-5 w-5" />,
       color: "#f59e0b",
     },
@@ -99,16 +96,24 @@ export function StatsGrid({ stats }: StatsGridProps) {
       label: "Agent Runs",
       value: stats.succeededAgentRuns.toLocaleString(),
       subtitle: `${stats.runningAgentRuns} running · ${stats.failedAgentRuns} failed`,
-      icon: stats.failedAgentRuns > 0 ? <AlertCircle className="h-5 w-5" /> : <Bot className="h-5 w-5" />,
+      icon:
+        stats.failedAgentRuns > 0 ? (
+          <AlertCircle className="h-5 w-5" />
+        ) : (
+          <Bot className="h-5 w-5" />
+        ),
       color: stats.failedAgentRuns > 0 ? "#ef4444" : "#14b8a6",
     },
     {
       label: "Ready State",
       value: stats.failedDocuments + stats.failedAgentRuns === 0 ? "Clear" : "Review",
       subtitle: `${stats.vectorReadyDocuments} vector docs ready`,
-      icon: stats.failedDocuments + stats.failedAgentRuns === 0
-        ? <CheckCircle2 className="h-5 w-5" />
-        : <AlertCircle className="h-5 w-5" />,
+      icon:
+        stats.failedDocuments + stats.failedAgentRuns === 0 ? (
+          <CheckCircle2 className="h-5 w-5" />
+        ) : (
+          <AlertCircle className="h-5 w-5" />
+        ),
       color: stats.failedDocuments + stats.failedAgentRuns === 0 ? "#22c55e" : "#f97316",
     },
   ];

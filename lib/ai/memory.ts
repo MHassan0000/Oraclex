@@ -83,9 +83,7 @@ export async function buildMemoryContext(
  * Summarize a conversation and persist the summary.
  * Called automatically when message count exceeds the threshold.
  */
-export async function summarizeConversation(
-  conversationId: string,
-): Promise<string> {
+export async function summarizeConversation(conversationId: string): Promise<string> {
   const supabase = await createServerSupabaseClient();
 
   // Fetch all messages for summarization
@@ -109,8 +107,9 @@ export async function summarizeConversation(
 
   // Build messages for the summarizer
   const transcript = messages
-    .map((m: { role: string; content: string }) =>
-      `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 500)}`,
+    .map(
+      (m: { role: string; content: string }) =>
+        `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 500)}`,
     )
     .join("\n\n");
 
@@ -130,10 +129,7 @@ export async function summarizeConversation(
   const summary = result.content.trim();
 
   // Persist the summary
-  await supabase
-    .from("conversations")
-    .update({ summary })
-    .eq("id", conversationId);
+  await supabase.from("conversations").update({ summary }).eq("id", conversationId);
 
   return summary;
 }
@@ -141,9 +137,7 @@ export async function summarizeConversation(
 /**
  * Check if a conversation needs summarization and trigger it if so.
  */
-export async function maybeUpdateSummary(
-  conversationId: string,
-): Promise<void> {
+export async function maybeUpdateSummary(conversationId: string): Promise<void> {
   const supabase = await createServerSupabaseClient();
 
   const { count } = await supabase

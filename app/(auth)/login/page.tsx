@@ -9,10 +9,7 @@ import { AuthLoading } from "@/components/auth/auth-loading";
 export default function LoginPage() {
   return (
     <AuthPageShell>
-      <AuthCard
-        title="Welcome back"
-        description="Sign in to manage your RAG workspaces."
-      >
+      <AuthCard title="Welcome back" description="Sign in to manage your RAG workspaces.">
         <Suspense fallback={<AuthLoading />}>
           <LoginForm />
         </Suspense>

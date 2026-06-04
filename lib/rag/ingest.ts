@@ -48,12 +48,7 @@ export async function ingestDocument(
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const fileValidation = validateFileSecure(
-      fileName,
-      fileType,
-      buffer.byteLength,
-      arrayBuffer,
-    );
+    const fileValidation = validateFileSecure(fileName, fileType, buffer.byteLength, arrayBuffer);
     if (!fileValidation.valid) {
       const message = fileValidation.error ?? "Invalid file content";
       await updateDocumentStatusAction(documentId, "failed", message);
@@ -64,7 +59,13 @@ export async function ingestDocument(
     const rawText = await extractText(buffer, fileType, fileName);
     if (!rawText.trim()) {
       await updateDocumentStatusAction(documentId, "failed", "No text content found");
-      return { documentId, chunksCreated: 0, embeddingsCreated: 0, totalTokens: 0, durationMs: Date.now() - startTime };
+      return {
+        documentId,
+        chunksCreated: 0,
+        embeddingsCreated: 0,
+        totalTokens: 0,
+        durationMs: Date.now() - startTime,
+      };
     }
 
     // 3. Clean text
@@ -82,7 +83,13 @@ export async function ingestDocument(
 
     if (chunks.length === 0) {
       await updateDocumentStatusAction(documentId, "failed", "No chunks produced");
-      return { documentId, chunksCreated: 0, embeddingsCreated: 0, totalTokens: 0, durationMs: Date.now() - startTime };
+      return {
+        documentId,
+        chunksCreated: 0,
+        embeddingsCreated: 0,
+        totalTokens: 0,
+        durationMs: Date.now() - startTime,
+      };
     }
 
     // 5. Store chunks in database
@@ -123,17 +130,19 @@ export async function ingestDocument(
         metadata: { documentId, chunkIndex: index, provider: EMBEDDING_PROVIDER },
       }));
 
-      const { error: embeddingError } = await supabase
-        .from("embeddings")
-        .insert(embeddingInserts);
+      const { error: embeddingError } = await supabase.from("embeddings").insert(embeddingInserts);
 
       if (embeddingError) throw new Error(`Embedding insertion failed: ${embeddingError.message}`);
 
       embeddingsCreated = embeddings.length;
       retrievalMode = "vector";
     } catch (error) {
-      embeddingErrorMessage = error instanceof Error ? error.message : "Embedding generation failed";
-      console.warn("Embedding unavailable; document will use keyword retrieval:", embeddingErrorMessage);
+      embeddingErrorMessage =
+        error instanceof Error ? error.message : "Embedding generation failed";
+      console.warn(
+        "Embedding unavailable; document will use keyword retrieval:",
+        embeddingErrorMessage,
+      );
     }
 
     // 8. Update document status + token count

@@ -1,7 +1,6 @@
 export const siteConfig = {
   name: "Oraclex",
-  description:
-    "Production-grade RAG platform for secure, high-fidelity AI assistants.",
+  description: "Production-grade RAG platform for secure, high-fidelity AI assistants.",
   url: "https://oraclex.ai",
 } as const;
 

@@ -47,5 +47,9 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "effect": "3.21.2",
+    "postcss": "8.5.14"
   }
 }

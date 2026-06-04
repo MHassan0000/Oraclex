@@ -13,12 +13,15 @@ type RateLimitEntry = {
 const store = new Map<string, RateLimitEntry>();
 
 // Cleanup stale entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (entry.resetAt < now) store.delete(key);
-  }
-}, 5 * 60 * 1000);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, entry] of store) {
+      if (entry.resetAt < now) store.delete(key);
+    }
+  },
+  5 * 60 * 1000,
+);
 
 export type RateLimitConfig = {
   /** Max requests per window */

@@ -36,9 +36,7 @@ export function AppTopbar({ sidebarCollapsed, onToggleSidebar }: AppTopbarProps)
               <PanelLeftClose className="h-5 w-5" />
             )}
           </Button>
-          <div className="hidden text-sm font-medium text-muted-foreground lg:block">
-            Workspace
-          </div>
+          <div className="hidden text-sm font-medium text-muted-foreground lg:block">Workspace</div>
         </div>
         <div className="min-w-0 flex-1" />
         <div className="flex items-center gap-2">

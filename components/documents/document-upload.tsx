@@ -48,13 +48,11 @@ function getFileIcon(fileName: string) {
   }
 }
 
-function matchesUploadItem(
-  item: FileUploadItem,
-  uploadId: string | undefined,
-  fileName: string,
-) {
+function matchesUploadItem(item: FileUploadItem, uploadId: string | undefined, fileName: string) {
   if (uploadId) return item.id === uploadId;
-  return item.fileName === fileName && (item.status === "uploading" || item.status === "processing");
+  return (
+    item.fileName === fileName && (item.status === "uploading" || item.status === "processing")
+  );
 }
 
 export function DocumentUpload() {
@@ -170,10 +168,7 @@ export function DocumentUpload() {
             };
 
             const uploadId = takeUploadId(serverData.fileName);
-            const fileType = resolveDocumentFileType(
-              serverData.fileType,
-              serverData.fileName,
-            );
+            const fileType = resolveDocumentFileType(serverData.fileType, serverData.fileName);
 
             try {
               // Create document record
@@ -195,18 +190,11 @@ export function DocumentUpload() {
               );
 
               // Trigger ingestion
-              await triggerIngestion(
-                doc.id,
-                serverData.fileUrl,
-                serverData.fileName,
-                fileType,
-              );
+              await triggerIngestion(doc.id, serverData.fileUrl, serverData.fileName, fileType);
 
               setFiles((prev) =>
                 prev.map((f) =>
-                  f.documentId === doc.id
-                    ? { ...f, status: "complete", progress: 100 }
-                    : f,
+                  f.documentId === doc.id ? { ...f, status: "complete", progress: 100 } : f,
                 ),
               );
 
@@ -229,9 +217,7 @@ export function DocumentUpload() {
           appToast.error(error.message);
           setFiles((prev) =>
             prev.map((f) =>
-              f.status === "uploading"
-                ? { ...f, status: "error", error: error.message }
-                : f,
+              f.status === "uploading" ? { ...f, status: "error", error: error.message } : f,
             ),
           );
         }}

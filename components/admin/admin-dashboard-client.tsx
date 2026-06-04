@@ -31,7 +31,11 @@ type AdminDashboardClientProps = {
   generatedAt: string;
 };
 
-function ChartCard({ title, subtitle, children }: {
+function ChartCard({
+  title,
+  subtitle,
+  children,
+}: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -126,8 +130,12 @@ export function AdminDashboardClient({
           </div>
 
           <div className="lg:ml-auto">
-            <div className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${healthClasses(health.status)}`}>
-              <span className={`h-2 w-2 shrink-0 rounded-full ${healthDotClasses(health.status)}`} />
+            <div
+              className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${healthClasses(health.status)}`}
+            >
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${healthDotClasses(health.status)}`}
+              />
               <span className="truncate">{health.label}</span>
             </div>
           </div>
@@ -171,7 +179,10 @@ export function AdminDashboardClient({
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <ChartCard title="Conversations And Messages" subtitle="Workspace activity over the last 30 days">
+          <ChartCard
+            title="Conversations And Messages"
+            subtitle="Workspace activity over the last 30 days"
+          >
             <ConversationChart data={conversationStats} />
           </ChartCard>
           <RecentConversationsCard conversations={recentConversations} />
@@ -199,7 +210,9 @@ function RecentConversationsCard({ conversations }: { conversations: RecentConve
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Recent Conversations</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Recent Conversations
+        </h3>
         <p className="mt-1 text-xs text-gray-400">Latest conversation activity across users</p>
       </div>
       {conversations.length === 0 ? (
@@ -237,7 +250,9 @@ function RecentDocumentsCard({ documents }: { documents: RecentDocument[] }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Recent Documents</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Recent Documents
+        </h3>
         <p className="mt-1 text-xs text-gray-400">Latest knowledge base ingestion state</p>
       </div>
       {documents.length === 0 ? (
@@ -245,7 +260,10 @@ function RecentDocumentsCard({ documents }: { documents: RecentDocument[] }) {
       ) : (
         <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {documents.map((document) => (
-            <div key={document.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-3">
+            <div
+              key={document.id}
+              className="rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-3"
+            >
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gray-900">{document.title}</p>
@@ -253,7 +271,9 @@ function RecentDocumentsCard({ documents }: { documents: RecentDocument[] }) {
                     {document.fileName ?? "Untitled file"}
                   </p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ring-1 ${statusPillClasses(document.status)}`}>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ring-1 ${statusPillClasses(document.status)}`}
+                >
                   {document.status}
                 </span>
               </div>
@@ -280,7 +300,9 @@ function ModelCostTable({ modelUsage }: { modelUsage: ModelUsage[] }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Model Cost Breakdown</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Model Cost Breakdown
+        </h3>
         <p className="mt-1 text-xs text-gray-400">Requests, tokens, and cost from usage logs</p>
       </div>
       {modelUsage.length === 0 ? (
@@ -299,10 +321,14 @@ function ModelCostTable({ modelUsage }: { modelUsage: ModelUsage[] }) {
             <tbody>
               {modelUsage.map((row) => (
                 <tr key={row.model} className="border-b border-gray-50 last:border-0">
-                  <td className="max-w-[22rem] truncate py-3 font-medium text-gray-800">{row.model}</td>
+                  <td className="max-w-[22rem] truncate py-3 font-medium text-gray-800">
+                    {row.model}
+                  </td>
                   <td className="py-3 text-right text-gray-600">{row.count.toLocaleString()}</td>
                   <td className="py-3 text-right text-gray-600">{row.tokens.toLocaleString()}</td>
-                  <td className="py-3 text-right font-medium text-gray-800">${row.cost.toFixed(4)}</td>
+                  <td className="py-3 text-right font-medium text-gray-800">
+                    ${row.cost.toFixed(4)}
+                  </td>
                 </tr>
               ))}
             </tbody>

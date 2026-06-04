@@ -5,18 +5,13 @@ import { z } from "zod";
 // ──────────────────────────────────────────
 
 export const chatMessageSchema = z.object({
-  conversationId: z
-    .string()
-    .uuid("Invalid conversation ID"),
+  conversationId: z.string().uuid("Invalid conversation ID"),
   message: z
     .string()
     .min(1, "Message cannot be empty")
     .max(32000, "Message too long (max 32,000 characters)")
     .transform((val) => sanitizeText(val)),
-  model: z
-    .string()
-    .max(100)
-    .optional(),
+  model: z.string().max(100).optional(),
   stream: z.boolean().optional().default(true),
 });
 
@@ -35,10 +30,7 @@ export const documentCreateSchema = z.object({
     .min(1)
     .max(255)
     .transform((val) => sanitizeFileName(val)),
-  fileType: z
-    .string()
-    .min(1)
-    .max(100),
+  fileType: z.string().min(1).max(100),
   storageUrl: z
     .string()
     .url("Invalid URL")
@@ -47,16 +39,11 @@ export const documentCreateSchema = z.object({
     .number()
     .positive()
     .max(16 * 1024 * 1024, "File too large"),
-  checksum: z
-    .string()
-    .max(128)
-    .optional(),
+  checksum: z.string().max(128).optional(),
 });
 
 export const ingestionSchema = z.object({
-  documentId: z
-    .string()
-    .uuid("Invalid document ID"),
+  documentId: z.string().uuid("Invalid document ID"),
   fileUrl: z
     .string()
     .url("Invalid file URL")
@@ -66,10 +53,7 @@ export const ingestionSchema = z.object({
     .min(1)
     .max(255)
     .transform((val) => sanitizeFileName(val)),
-  fileType: z
-    .string()
-    .min(1)
-    .max(100),
+  fileType: z.string().min(1).max(100),
 });
 
 // ──────────────────────────────────────────
@@ -98,23 +82,27 @@ export const conversationIdSchema = z.object({
  * Preserves newlines and markdown formatting.
  */
 export function sanitizeText(input: string): string {
-  return input
-    // Remove null bytes and other control chars except newlines/tabs
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    .trim();
+  return (
+    input
+      // Remove null bytes and other control chars except newlines/tabs
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      .trim()
+  );
 }
 
 /**
  * Sanitize file names: strip path traversal, special chars.
  */
 export function sanitizeFileName(name: string): string {
-  return name
-    // Remove path traversal
-    .replace(/\.\./g, "")
-    .replace(/[/\\]/g, "")
-    // Remove null bytes
-    .replace(/[\x00-\x1F\x7F]/g, "")
-    .trim();
+  return (
+    name
+      // Remove path traversal
+      .replace(/\.\./g, "")
+      .replace(/[/\\]/g, "")
+      // Remove null bytes
+      .replace(/[\x00-\x1F\x7F]/g, "")
+      .trim()
+  );
 }
 
 /**
@@ -149,9 +137,5 @@ export function isAllowedUploadedFileUrl(url: string): boolean {
   if (!sanitized) return false;
 
   const { hostname } = new URL(sanitized);
-  return (
-    hostname === "utfs.io" ||
-    hostname === "ufs.sh" ||
-    hostname.endsWith(".ufs.sh")
-  );
+  return hostname === "utfs.io" || hostname === "ufs.sh" || hostname.endsWith(".ufs.sh");
 }

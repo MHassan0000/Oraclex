@@ -13,10 +13,5 @@ export default async function ChatPage() {
     // Keep the chat usable even if history is temporarily unavailable.
   }
 
-  return (
-    <ChatPageClient
-      key="new-chat"
-      initialConversations={conversations}
-    />
-  );
+  return <ChatPageClient key="new-chat" initialConversations={conversations} />;
 }

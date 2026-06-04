@@ -17,14 +17,14 @@ export async function extractText(
       return extractPdf(buffer);
     case fileType === "text/csv" || extension === "csv":
       return extractCsv(buffer);
-    case fileType === "text/markdown" ||
-      fileType === "text/x-markdown" ||
-      extension === "md":
+    case fileType === "text/markdown" || fileType === "text/x-markdown" || extension === "md":
       return extractMarkdown(buffer);
     case fileType === "text/plain" || extension === "txt":
       return buffer.toString("utf-8");
     default:
-      throw new Error(`Unsupported file type for extraction: ${fileType || extension || "unknown"}`);
+      throw new Error(
+        `Unsupported file type for extraction: ${fileType || extension || "unknown"}`,
+      );
   }
 }
 
@@ -35,7 +35,9 @@ async function extractPdf(buffer: Buffer): Promise<string> {
     const data = await parser.getText();
     return cleanText(data.text);
   } catch (error) {
-    throw new Error(`PDF extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    throw new Error(
+      `PDF extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   } finally {
     await parser.destroy();
   }
@@ -52,9 +54,7 @@ function extractCsv(buffer: Buffer): string {
 
   const textBlocks = rows.map((row) => {
     const values = row.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
-    return headers
-      .map((h, i) => `${h}: ${values[i] ?? ""}`)
-      .join(" | ");
+    return headers.map((h, i) => `${h}: ${values[i] ?? ""}`).join(" | ");
   });
 
   return textBlocks.join("\n");

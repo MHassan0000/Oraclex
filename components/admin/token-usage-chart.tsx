@@ -48,7 +48,7 @@ export function TokenUsageChart({ data }: TokenUsageChartProps) {
           />
           <YAxis
             tick={{ fontSize: 11, fill: "#6b7280" }}
-            tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+            tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
             stroke="#e5e7eb"
           />
           <Tooltip

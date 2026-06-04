@@ -1,11 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type {
-  Conversation,
-  ConversationInsert,
-  ConversationUpdate,
-} from "@/lib/db/types";
+import type { Conversation, ConversationInsert, ConversationUpdate } from "@/lib/db/types";
 
 // ──────────────────────────────────────────
 // Queries
@@ -36,15 +32,9 @@ export async function getConversations(): Promise<Conversation[]> {
 /**
  * Create a new conversation and return it.
  */
-export async function createConversation(
-  input: ConversationInsert,
-): Promise<Conversation> {
+export async function createConversation(input: ConversationInsert): Promise<Conversation> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .insert(input)
-    .select()
-    .single();
+  const { data, error } = await supabase.from("conversations").insert(input).select().single();
 
   if (error) throw error;
   return data as Conversation;

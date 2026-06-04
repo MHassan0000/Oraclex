@@ -25,9 +25,7 @@ export function createSSEStream(options: {
   return new ReadableStream({
     async start(controller) {
       // Send initial status
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({ status: "streaming" })}\n\n`),
-      );
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: "streaming" })}\n\n`));
 
       // Send citations upfront if available
       if (options.citations?.length) {
@@ -66,9 +64,7 @@ export function createSSEStream(options: {
               const content = parsed.choices?.[0]?.delta?.content ?? parsed.content ?? "";
               if (content) {
                 fullContent += content;
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ content })}\n\n`),
-                );
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
               }
             } catch {
               // Skip malformed
@@ -132,9 +128,7 @@ export function createSSEStream(options: {
             console.error("Stream onError error:", err);
           }
         }
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
         controller.close();
       } finally {
         reader.releaseLock();

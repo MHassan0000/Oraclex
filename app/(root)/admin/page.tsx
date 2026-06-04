@@ -14,16 +14,23 @@ import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client"
 export default async function AdminPage() {
   await requireAdmin();
 
-  const [stats, tokenUsage, modelUsage, uploadStats, conversationStats, recentConversations, recentDocuments] =
-    await Promise.all([
-      getOverviewStats(),
-      getTokenUsageByDay(30),
-      getModelUsageStats(),
-      getUploadStatsByDay(30),
-      getConversationStatsByDay(30),
-      getRecentConversations(10),
-      getRecentDocuments(8),
-    ]);
+  const [
+    stats,
+    tokenUsage,
+    modelUsage,
+    uploadStats,
+    conversationStats,
+    recentConversations,
+    recentDocuments,
+  ] = await Promise.all([
+    getOverviewStats(),
+    getTokenUsageByDay(30),
+    getModelUsageStats(),
+    getUploadStatsByDay(30),
+    getConversationStatsByDay(30),
+    getRecentConversations(10),
+    getRecentDocuments(8),
+  ]);
   const health = getSystemHealth(stats);
 
   return (

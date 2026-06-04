@@ -71,9 +71,7 @@ export function ConversationHistoryClient({
     if (!normalizedQuery) return sorted;
 
     return sorted.filter((conversation) =>
-      `${conversation.title} ${conversation.summary ?? ""}`
-        .toLowerCase()
-        .includes(normalizedQuery),
+      `${conversation.title} ${conversation.summary ?? ""}`.toLowerCase().includes(normalizedQuery),
     );
   }, [conversations, query]);
 
@@ -358,7 +356,11 @@ function ConversationHistoryRow({
             onClick={onTogglePin}
             disabled={isPending}
           >
-            {conversation.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            {conversation.pinned ? (
+              <PinOff className="h-3.5 w-3.5" />
+            ) : (
+              <Pin className="h-3.5 w-3.5" />
+            )}
           </Button>
           <Button
             size="icon-sm"

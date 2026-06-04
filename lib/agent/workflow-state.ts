@@ -103,9 +103,7 @@ export function createWorkflowState(
 /**
  * A workflow node is a function that transforms the state.
  */
-export type WorkflowNode = (
-  state: WorkflowState,
-) => Promise<WorkflowState>;
+export type WorkflowNode = (state: WorkflowState) => Promise<WorkflowState>;
 
 /**
  * Advance the state to the next node.

@@ -22,16 +22,17 @@ const nextConfig: NextConfig = {
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-XSS-Protection", value: "1; mode=block" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
+        {
+          key: "Permissions-Policy",
+          value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+        },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         { key: "X-DNS-Prefetch-Control", value: "off" },
       ],
     },
     {
       source: "/api/(.*)",
-      headers: [
-        { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
-      ],
+      headers: [{ key: "Cache-Control", value: "no-store, no-cache, must-revalidate" }],
     },
   ],
 };

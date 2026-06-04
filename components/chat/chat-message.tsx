@@ -46,9 +46,7 @@ export function ChatMessageCard({
       transition={{ duration: 0.35, ease: "easeOut" }}
       className={cn(
         "group relative flex w-full gap-4 rounded-3xl border border-border/60 p-5",
-        isAssistant
-          ? "bg-card/80 shadow-sm"
-          : "bg-primary/[0.06] border-primary/20",
+        isAssistant ? "bg-card/80 shadow-sm" : "bg-primary/[0.06] border-primary/20",
         message.error && "border-destructive/50 bg-destructive/10",
         isStreaming && "border-primary/30",
       )}

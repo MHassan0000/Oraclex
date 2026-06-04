@@ -123,10 +123,8 @@ export function DocumentList({ documents }: DocumentListProps) {
       <AnimatePresence mode="popLayout">
         {items.map((doc) => {
           const fileSize =
-            typeof doc.metadata === "object" &&
-            doc.metadata !== null &&
-            "file_size" in doc.metadata
-              ? (doc.metadata as Record<string, unknown>).file_size as number
+            typeof doc.metadata === "object" && doc.metadata !== null && "file_size" in doc.metadata
+              ? ((doc.metadata as Record<string, unknown>).file_size as number)
               : 0;
 
           return (
@@ -145,9 +143,7 @@ export function DocumentList({ documents }: DocumentListProps) {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {doc.title}
-                  </p>
+                  <p className="text-sm font-medium text-foreground truncate">{doc.title}</p>
                   {getStatusBadge(doc.status)}
                   {doc.status === "ready" && getRetrievalMode(doc) ? (
                     <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">

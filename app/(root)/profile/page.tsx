@@ -7,10 +7,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <AuthCard
-        title="Profile settings"
-        description="Keep your workspace identity up to date."
-      >
+      <AuthCard title="Profile settings" description="Keep your workspace identity up to date.">
         <ProfileForm
           initialName={(user?.user_metadata?.full_name as string | undefined) ?? null}
           email={user?.email ?? null}

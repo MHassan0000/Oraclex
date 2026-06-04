@@ -33,19 +33,22 @@ export function validateFileSecure(
 ): FileValidationResult {
   // 1. Extension check
   const extension = getFileExtension(fileName);
-  if (!ALLOWED_EXTENSIONS.includes(extension as typeof ALLOWED_EXTENSIONS[number])) {
+  if (!ALLOWED_EXTENSIONS.includes(extension as (typeof ALLOWED_EXTENSIONS)[number])) {
     return { valid: false, error: `File type ${extension || "(none)"} is not supported` };
   }
 
   // 2. MIME type check
   const normalizedFileType = resolveDocumentFileType(fileType, extension);
-  if (!ALLOWED_MIME_TYPES.includes(normalizedFileType as typeof ALLOWED_MIME_TYPES[number])) {
+  if (!ALLOWED_MIME_TYPES.includes(normalizedFileType as (typeof ALLOWED_MIME_TYPES)[number])) {
     return { valid: false, error: `MIME type ${normalizedFileType} is not allowed` };
   }
 
   // 3. Size check
   if (fileSize > MAX_FILE_SIZE_BYTES) {
-    return { valid: false, error: `File exceeds maximum size of ${formatFileSize(MAX_FILE_SIZE_BYTES)}` };
+    return {
+      valid: false,
+      error: `File exceeds maximum size of ${formatFileSize(MAX_FILE_SIZE_BYTES)}`,
+    };
   }
 
   if (fileSize === 0) {
@@ -57,9 +60,7 @@ export function validateFileSecure(
     const bytes = new Uint8Array(buffer.slice(0, 4));
     const expected = MAGIC_BYTES["application/pdf"];
     if (expected) {
-      const matches = expected.some((pattern) =>
-        pattern.every((byte, i) => bytes[i] === byte),
-      );
+      const matches = expected.some((pattern) => pattern.every((byte, i) => bytes[i] === byte));
       if (!matches) {
         return { valid: false, error: "File content does not match PDF format" };
       }

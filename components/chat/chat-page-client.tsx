@@ -58,7 +58,7 @@ export function ChatPageClient({
           setSelectedModel((current) =>
             data.models?.some((model) => model.id === current)
               ? current
-              : data.models?.[0]?.id ?? DEFAULT_MODEL,
+              : (data.models?.[0]?.id ?? DEFAULT_MODEL),
           );
         }
       } catch {

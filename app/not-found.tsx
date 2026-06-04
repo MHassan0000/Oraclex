@@ -13,7 +13,8 @@ export default function NotFound() {
         <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">404</p>
         <h1 className="mt-3 text-3xl font-semibold text-foreground">Page not found</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-          This workspace route is not available in the current app session. If this appeared after an update, restart the local dev server so the router can reload new pages.
+          This workspace route is not available in the current app session. If this appeared after
+          an update, restart the local dev server so the router can reload new pages.
         </p>
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Button asChild>

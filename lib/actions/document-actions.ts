@@ -102,11 +102,7 @@ export async function deleteDocumentAction(id: string): Promise<void> {
   if (!user) throw new Error("Unauthorized");
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
-    .from("documents")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  const { error } = await supabase.from("documents").delete().eq("id", id).eq("user_id", user.id);
 
   if (error) throw error;
   revalidatePath("/knowledge");

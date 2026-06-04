@@ -48,11 +48,7 @@ export function ModelUsageChart({ data }: ModelUsageChartProps) {
           margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis
-            type="number"
-            tick={{ fontSize: 11, fill: "#6b7280" }}
-            stroke="#e5e7eb"
-          />
+          <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} stroke="#e5e7eb" />
           <YAxis
             dataKey="displayModel"
             type="category"

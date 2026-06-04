@@ -29,20 +29,11 @@ export async function POST(request: NextRequest) {
 
     const { documentId, fileUrl, fileName, fileType } = validation.data;
 
-    const result = await ingestDocument(
-      documentId,
-      user.id,
-      fileUrl,
-      fileName,
-      fileType,
-    );
+    const result = await ingestDocument(documentId, user.id, fileUrl, fileName, fileType);
 
     return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error("Ingestion error:", error);
-    return NextResponse.json(
-      { error: "Ingestion failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Ingestion failed" }, { status: 500 });
   }
 }

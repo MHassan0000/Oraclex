@@ -102,9 +102,7 @@ function CitationCard({ citation }: CitationCardProps) {
             className="overflow-hidden"
           >
             <div className="border-t border-border/40 px-3 py-2.5">
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {citation.content}
-              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{citation.content}</p>
             </div>
           </motion.div>
         ) : null}

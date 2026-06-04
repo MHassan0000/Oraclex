@@ -10,13 +10,7 @@ type PipelineCardProps = {
   className?: string;
 };
 
-export function PipelineCard({
-  title,
-  status,
-  trend,
-  highlight,
-  className,
-}: PipelineCardProps) {
+export function PipelineCard({ title, status, trend, highlight, className }: PipelineCardProps) {
   return (
     <div
       className={cn(

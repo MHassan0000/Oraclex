@@ -17,10 +17,7 @@ export function validateRequestBody<T>(
     const errors = formatZodErrors(result.error);
     return {
       success: false,
-      response: NextResponse.json(
-        { error: "Validation failed", details: errors },
-        { status: 400 },
-      ),
+      response: NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 }),
     };
   }
 
@@ -36,13 +33,7 @@ function formatZodErrors(error: ZodError): Record<string, string[]> {
  */
 export function stripSensitiveFields<T extends Record<string, unknown>>(
   obj: T,
-  sensitiveKeys: string[] = [
-    "user_id",
-    "storage_path",
-    "checksum",
-    "content_hash",
-    "embedding",
-  ],
+  sensitiveKeys: string[] = ["user_id", "storage_path", "checksum", "content_hash", "embedding"],
 ): Partial<T> {
   const cleaned = { ...obj };
   for (const key of sensitiveKeys) {
@@ -63,7 +54,12 @@ export function redactEnvForLogging(
   for (const [key, value] of Object.entries(env)) {
     if (!value) {
       redacted[key] = "(not set)";
-    } else if (key.includes("KEY") || key.includes("SECRET") || key.includes("TOKEN") || key.includes("PASSWORD")) {
+    } else if (
+      key.includes("KEY") ||
+      key.includes("SECRET") ||
+      key.includes("TOKEN") ||
+      key.includes("PASSWORD")
+    ) {
       redacted[key] = `${value.slice(0, 4)}...${value.slice(-4)}`;
     } else {
       redacted[key] = value;

@@ -65,7 +65,12 @@ async function readStreamChunk(
       reader.read(),
       new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
         timeout = setTimeout(
-          () => reject(new Error("The AI provider did not send a response in time. Try again or select another model.")),
+          () =>
+            reject(
+              new Error(
+                "The AI provider did not send a response in time. Try again or select another model.",
+              ),
+            ),
           CLIENT_STREAM_IDLE_TIMEOUT_MS,
         );
       }),
@@ -75,9 +80,7 @@ async function readStreamChunk(
   }
 }
 
-function parseCitationsFromMetadata(
-  metadata: Record<string, unknown>,
-): Citation[] | undefined {
+function parseCitationsFromMetadata(metadata: Record<string, unknown>): Citation[] | undefined {
   if (metadata?.citations && Array.isArray(metadata.citations)) {
     return metadata.citations as Citation[];
   }
@@ -100,9 +103,7 @@ export function useChat(options: UseChatOptions = {}) {
   const [dbConversations, setDbConversations] = useState<Conversation[]>(
     options.initialConversations ?? [],
   );
-  const [dbMessages, setDbMessages] = useState<Message[]>(
-    options.initialMessages ?? [],
-  );
+  const [dbMessages, setDbMessages] = useState<Message[]>(options.initialMessages ?? []);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [streamCitations, setStreamCitations] = useState<Citation[]>([]);
   const [sendPending, setSendPending] = useState(false);
@@ -180,24 +181,34 @@ export function useChat(options: UseChatOptions = {}) {
   useEffect(() => {
     const channel = supabase
       .channel("chat-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, (payload) => {
-        if (payload.eventType === "INSERT") {
-          setDbConversations((prev) =>
-            prev.some((conversation) => conversation.id === (payload.new as Conversation).id)
-              ? prev
-              : [payload.new as Conversation, ...prev],
-          );
-        } else if (payload.eventType === "UPDATE") {
-          setDbConversations((prev) =>
-            prev.map((c) => (c.id === (payload.new as Conversation).id ? (payload.new as Conversation) : c)),
-          );
-        } else if (payload.eventType === "DELETE") {
-          setDbConversations((prev) => prev.filter((c) => c.id !== (payload.old as { id: string }).id));
-        }
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setDbConversations((prev) =>
+              prev.some((conversation) => conversation.id === (payload.new as Conversation).id)
+                ? prev
+                : [payload.new as Conversation, ...prev],
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setDbConversations((prev) =>
+              prev.map((c) =>
+                c.id === (payload.new as Conversation).id ? (payload.new as Conversation) : c,
+              ),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setDbConversations((prev) =>
+              prev.filter((c) => c.id !== (payload.old as { id: string }).id),
+            );
+          }
+        },
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [supabase]);
 
   // ── Cancel streaming ──
@@ -223,14 +234,18 @@ export function useChat(options: UseChatOptions = {}) {
 
           if (!conversationId) {
             const conversation = await createConversationAction(
-              trimmedContent.length > 50 ? `${trimmedContent.slice(0, 50).trim()}...` : trimmedContent,
+              trimmedContent.length > 50
+                ? `${trimmedContent.slice(0, 50).trim()}...`
+                : trimmedContent,
             );
             const now = new Date().toISOString();
             const activeConversation = { ...conversation, last_message_at: now };
             conversationId = conversation.id;
             setCurrentConversationId(conversation.id);
             setDbConversations((prev) =>
-              prev.some((item) => item.id === conversation.id) ? prev : [activeConversation, ...prev],
+              prev.some((item) => item.id === conversation.id)
+                ? prev
+                : [activeConversation, ...prev],
             );
           } else {
             const now = new Date().toISOString();
@@ -427,9 +442,10 @@ export function useChat(options: UseChatOptions = {}) {
               return;
             }
 
-            const message = err instanceof Error
-              ? err.message
-              : "Unable to reach the AI service. Please try again.";
+            const message =
+              err instanceof Error
+                ? err.message
+                : "Unable to reach the AI service. Please try again.";
 
             setDbMessages((prev) =>
               prev.map((m) =>
@@ -460,75 +476,88 @@ export function useChat(options: UseChatOptions = {}) {
   const editMessage = useCallback((id: string, content: string) => {
     setDbMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content } : m)));
     startTransition(async () => {
-      try { await editMessageAction(id, content); }
-      catch { appToast.error("Failed to edit message"); }
+      try {
+        await editMessageAction(id, content);
+      } catch {
+        appToast.error("Failed to edit message");
+      }
     });
   }, []);
 
-  const regenerateMessage = useCallback((id: string, model?: string) => {
-    // Find the last user message before the assistant message
-    const msgIndex = dbMessages.findIndex((m) => m.id === id);
-    const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
-    const lastUserMsg = userMessages[userMessages.length - 1];
+  const regenerateMessage = useCallback(
+    (id: string, model?: string) => {
+      // Find the last user message before the assistant message
+      const msgIndex = dbMessages.findIndex((m) => m.id === id);
+      const userMessages = dbMessages.slice(0, msgIndex).filter((m) => m.role === "user");
+      const lastUserMsg = userMessages[userMessages.length - 1];
 
-    if (lastUserMsg && currentConversationId) {
-      // Remove the assistant message and resend
-      setDbMessages((prev) => prev.filter((m) => m.id !== id));
-      sendMessage(lastUserMsg.content, model);
-    }
-  }, [dbMessages, currentConversationId, sendMessage]);
+      if (lastUserMsg && currentConversationId) {
+        // Remove the assistant message and resend
+        setDbMessages((prev) => prev.filter((m) => m.id !== id));
+        sendMessage(lastUserMsg.content, model);
+      }
+    },
+    [dbMessages, currentConversationId, sendMessage],
+  );
 
-  const removeConversation = useCallback((id: string) => {
-    const previousConversations = dbConversations;
-    setDbConversations((prev) => prev.filter((c) => c.id !== id));
-    startTransition(async () => {
-      try {
-        await deleteConversationAction(id);
-        if (currentConversationId === id) {
-          setCurrentConversationId(null);
-          setDbMessages([]);
-          router.push("/chat");
+  const removeConversation = useCallback(
+    (id: string) => {
+      const previousConversations = dbConversations;
+      setDbConversations((prev) => prev.filter((c) => c.id !== id));
+      startTransition(async () => {
+        try {
+          await deleteConversationAction(id);
+          if (currentConversationId === id) {
+            setCurrentConversationId(null);
+            setDbMessages([]);
+            router.push("/chat");
+          }
+          router.refresh();
+          appToast.success("Conversation deleted");
+        } catch {
+          setDbConversations(previousConversations);
+          appToast.error("Failed to delete conversation");
         }
-        router.refresh();
-        appToast.success("Conversation deleted");
-      } catch {
-        setDbConversations(previousConversations);
-        appToast.error("Failed to delete conversation");
-      }
-    });
-  }, [currentConversationId, dbConversations, router]);
+      });
+    },
+    [currentConversationId, dbConversations, router],
+  );
 
-  const renameConversation = useCallback((id: string, title: string) => {
-    const previousConversations = dbConversations;
-    setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
-    startTransition(async () => {
-      try {
-        const conversation = await renameConversationAction(id, title);
-        setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
-        router.refresh();
-      }
-      catch {
-        setDbConversations(previousConversations);
-        appToast.error("Failed to rename conversation");
-      }
-    });
-  }, [dbConversations, router]);
+  const renameConversation = useCallback(
+    (id: string, title: string) => {
+      const previousConversations = dbConversations;
+      setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+      startTransition(async () => {
+        try {
+          const conversation = await renameConversationAction(id, title);
+          setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
+          router.refresh();
+        } catch {
+          setDbConversations(previousConversations);
+          appToast.error("Failed to rename conversation");
+        }
+      });
+    },
+    [dbConversations, router],
+  );
 
-  const pinConversation = useCallback((id: string, pinned: boolean) => {
-    const previousConversations = dbConversations;
-    setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned } : c)));
-    startTransition(async () => {
-      try {
-        const conversation = await pinConversationAction(id, pinned);
-        setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
-        router.refresh();
-      }
-      catch {
-        setDbConversations(previousConversations);
-        appToast.error("Failed to pin conversation");
-      }
-    });
-  }, [dbConversations, router]);
+  const pinConversation = useCallback(
+    (id: string, pinned: boolean) => {
+      const previousConversations = dbConversations;
+      setDbConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned } : c)));
+      startTransition(async () => {
+        try {
+          const conversation = await pinConversationAction(id, pinned);
+          setDbConversations((prev) => prev.map((c) => (c.id === id ? conversation : c)));
+          router.refresh();
+        } catch {
+          setDbConversations(previousConversations);
+          appToast.error("Failed to pin conversation");
+        }
+      });
+    },
+    [dbConversations, router],
+  );
 
   return {
     conversations,

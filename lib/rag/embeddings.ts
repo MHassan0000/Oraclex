@@ -37,10 +37,7 @@ function buildHeaders(): Record<string, string> {
   };
 }
 
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init: RequestInit,
-): Promise<Response> {
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMBEDDING_TIMEOUT_MS);
 
@@ -48,7 +45,9 @@ async function fetchWithTimeout(
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`OpenRouter embeddings timed out after ${Math.round(EMBEDDING_TIMEOUT_MS / 1000)}s`);
+      throw new Error(
+        `OpenRouter embeddings timed out after ${Math.round(EMBEDDING_TIMEOUT_MS / 1000)}s`,
+      );
     }
     throw error;
   } finally {
@@ -120,9 +119,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 /**
  * Generate document chunk embeddings through OpenRouter in stable batches.
  */
-export async function generateEmbeddingsBatch(
-  texts: string[],
-): Promise<number[][]> {
+export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
   const results: number[][] = [];
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
@@ -134,9 +131,4 @@ export async function generateEmbeddingsBatch(
   return results;
 }
 
-export {
-  EMBEDDING_MODEL,
-  EMBEDDING_PROVIDER,
-  EMBEDDING_DIMENSIONS,
-  EMBEDDING_CONTEXT_WINDOW,
-};
+export { EMBEDDING_MODEL, EMBEDDING_PROVIDER, EMBEDDING_DIMENSIONS, EMBEDDING_CONTEXT_WINDOW };

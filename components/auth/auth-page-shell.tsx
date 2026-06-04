@@ -9,12 +9,7 @@ type AuthPageShellProps = {
 
 export function AuthPageShell({ children, className }: AuthPageShellProps) {
   return (
-    <div
-      className={cn(
-        "w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300",
-        className,
-      )}
-    >
+    <div className={cn("w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-300", className)}>
       {children}
     </div>
   );

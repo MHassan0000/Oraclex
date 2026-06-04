@@ -19,9 +19,7 @@ export function AuthCard({ title, description, children, className }: AuthCardPr
     >
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-        {description ? (
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        ) : null}
+        {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       <div className="space-y-6">{children}</div>
     </div>

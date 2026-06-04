@@ -21,9 +21,7 @@ export function Brand({ name, label, className }: BrandProps) {
       </div>
       <div className="leading-tight">
         <p className="text-sm font-semibold text-foreground">{name}</p>
-        {label ? (
-          <p className="text-xs text-muted-foreground">{label}</p>
-        ) : null}
+        {label ? <p className="text-xs text-muted-foreground">{label}</p> : null}
       </div>
     </div>
   );

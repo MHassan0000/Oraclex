@@ -35,7 +35,9 @@ export default async function Home() {
     {
       title: "Knowledge ingestion",
       status: `${formatNumber(stats.readyDocuments)} of ${formatNumber(stats.totalDocuments)} documents ready`,
-      trend: stats.processingDocuments ? `${formatNumber(stats.processingDocuments)} processing` : `${readyPercent}% ready`,
+      trend: stats.processingDocuments
+        ? `${formatNumber(stats.processingDocuments)} processing`
+        : `${readyPercent}% ready`,
     },
     {
       title: "RAG retrieval",
@@ -51,7 +53,11 @@ export default async function Home() {
 
   const retrievalHealth = [
     { label: "Ready documents", value: `${readyPercent}%`, width: readyPercent },
-    { label: "Processing queue", value: `${stats.processingDocuments} active`, width: processingPercent },
+    {
+      label: "Processing queue",
+      value: `${stats.processingDocuments} active`,
+      width: processingPercent,
+    },
     { label: "Failed documents", value: `${stats.failedDocuments} failed`, width: failedPercent },
     {
       label: "Token coverage",
@@ -119,7 +125,10 @@ export default async function Home() {
                   <span className="text-xs text-muted-foreground">{item.value}</span>
                 </div>
                 <div className="mt-3 h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${item.width}%` }} />
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${item.width}%` }}
+                  />
                 </div>
               </div>
             ))}

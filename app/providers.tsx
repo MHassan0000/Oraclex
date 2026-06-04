@@ -11,18 +11,9 @@ type ProvidersProps = {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider defaultTheme="dark" enableSystem disableTransitionOnChange>
       {children}
-      <Toaster
-        richColors
-        closeButton
-        theme="system"
-        position="bottom-right"
-      />
+      <Toaster richColors closeButton theme="system" position="bottom-right" />
     </ThemeProvider>
   );
 }

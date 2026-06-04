@@ -43,10 +43,7 @@ function getInitialTheme(defaultTheme: Theme, storageKey: string): Theme {
   return storedTheme && themes.includes(storedTheme) ? storedTheme : defaultTheme;
 }
 
-function applyResolvedTheme(
-  resolvedTheme: "light" | "dark",
-  disableTransitionOnChange: boolean,
-) {
+function applyResolvedTheme(resolvedTheme: "light" | "dark", disableTransitionOnChange: boolean) {
   const root = document.documentElement;
 
   let style: HTMLStyleElement | null = null;

@@ -27,11 +27,12 @@ export function useAuth() {
         setInitializing(false);
       }
     });
-    const timeout = typeof window !== "undefined"
-      ? window.setTimeout(() => {
-          if (mounted) setInitializing(false);
-        }, 1500)
-      : undefined;
+    const timeout =
+      typeof window !== "undefined"
+        ? window.setTimeout(() => {
+            if (mounted) setInitializing(false);
+          }, 1500)
+        : undefined;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setInitializing(false);
@@ -65,9 +66,7 @@ export function useAuth() {
       setLoading(true);
       const emailRedirectTo =
         clientEnv.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ??
-        (typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined);
+        (typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -102,8 +101,7 @@ export function useAuth() {
     async (provider: Provider, redirectPath?: string) => {
       setLoading(true);
       const callbackUrl =
-        clientEnv.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ??
-        `${window.location.origin}/auth/callback`;
+        clientEnv.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`;
       const redirectTo = redirectPath
         ? `${callbackUrl}${callbackUrl.includes("?") ? "&" : "?"}${
             AUTH_REDIRECT_PARAM
@@ -127,8 +125,7 @@ export function useAuth() {
     async (email: string, redirectPath?: string): Promise<AuthResponse> => {
       setLoading(true);
       const callbackUrl =
-        clientEnv.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ??
-        `${window.location.origin}/auth/callback`;
+        clientEnv.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`;
       const resetPath = redirectPath
         ? `/reset-password?${AUTH_REDIRECT_PARAM}=${encodeURIComponent(redirectPath)}`
         : "/reset-password";

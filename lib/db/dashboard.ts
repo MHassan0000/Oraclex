@@ -17,35 +17,26 @@ export type WorkspaceDashboardData = {
 export async function getWorkspaceDashboardData(): Promise<WorkspaceDashboardData> {
   const supabase = await createServerSupabaseClient();
 
-  const [conversations, messages, documents, ready, processing, failed, usage] =
-    await Promise.all([
-      supabase.from("conversations").select("id", { count: "exact", head: true }),
-      supabase.from("messages").select("id", { count: "exact", head: true }),
-      supabase.from("documents").select("id", { count: "exact", head: true }),
-      supabase
-        .from("documents")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "ready"),
-      supabase
-        .from("documents")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "processing"),
-      supabase
-        .from("documents")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "failed"),
-      supabase.from("usage_logs").select("tokens, cost_usd"),
-    ]);
+  const [conversations, messages, documents, ready, processing, failed, usage] = await Promise.all([
+    supabase.from("conversations").select("id", { count: "exact", head: true }),
+    supabase.from("messages").select("id", { count: "exact", head: true }),
+    supabase.from("documents").select("id", { count: "exact", head: true }),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "ready"),
+    supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "processing"),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    supabase.from("usage_logs").select("tokens, cost_usd"),
+  ]);
 
   const usageLogs = usage.data ?? [];
   const totalTokens = usageLogs.reduce(
-    (sum: number, row: { tokens?: number | string | null }) =>
-      sum + Number(row.tokens ?? 0),
+    (sum: number, row: { tokens?: number | string | null }) => sum + Number(row.tokens ?? 0),
     0,
   );
   const totalCostUsd = usageLogs.reduce(
-    (sum: number, row: { cost_usd?: number | string | null }) =>
-      sum + Number(row.cost_usd ?? 0),
+    (sum: number, row: { cost_usd?: number | string | null }) => sum + Number(row.cost_usd ?? 0),
     0,
   );
 

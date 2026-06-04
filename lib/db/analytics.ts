@@ -181,35 +181,46 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     activeMessagesRes,
     activeDocumentsRes,
     documentsMetadataRes,
-  ] =
-    await Promise.all([
-      supabase.from("conversations").select("id", { count: "exact", head: true }),
-      supabase.from("messages").select("id", { count: "exact", head: true }),
-      supabase.from("documents").select("id", { count: "exact", head: true }),
-      supabase.from("usage_logs").select("tokens, cost_usd"),
-      supabase.from("profiles").select("user_id", { count: "exact", head: true }),
-      supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "ready"),
-      supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "processing"),
-      supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "failed"),
-      supabase.from("document_chunks").select("id", { count: "exact", head: true }),
-      supabase.from("embeddings").select("id", { count: "exact", head: true }),
-      supabase.from("agent_runs").select("id", { count: "exact", head: true }).eq("status", "running"),
-      supabase.from("agent_runs").select("id", { count: "exact", head: true }).eq("status", "failed"),
-      supabase.from("agent_runs").select("id", { count: "exact", head: true }).eq("status", "succeeded"),
-      supabase.from("conversations").select("user_id").gte("created_at", activeSince),
-      supabase.from("messages").select("user_id").gte("created_at", activeSince),
-      supabase.from("documents").select("user_id").gte("created_at", activeSince),
-      supabase.from("documents").select("metadata").eq("status", "ready"),
-    ]);
+  ] = await Promise.all([
+    supabase.from("conversations").select("id", { count: "exact", head: true }),
+    supabase.from("messages").select("id", { count: "exact", head: true }),
+    supabase.from("documents").select("id", { count: "exact", head: true }),
+    supabase.from("usage_logs").select("tokens, cost_usd"),
+    supabase.from("profiles").select("user_id", { count: "exact", head: true }),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "ready"),
+    supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "processing"),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    supabase.from("document_chunks").select("id", { count: "exact", head: true }),
+    supabase.from("embeddings").select("id", { count: "exact", head: true }),
+    supabase
+      .from("agent_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "running"),
+    supabase.from("agent_runs").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    supabase
+      .from("agent_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "succeeded"),
+    supabase.from("conversations").select("user_id").gte("created_at", activeSince),
+    supabase.from("messages").select("user_id").gte("created_at", activeSince),
+    supabase.from("documents").select("user_id").gte("created_at", activeSince),
+    supabase.from("documents").select("metadata").eq("status", "ready"),
+  ]);
 
   const usageLogs = (usageRes.data ?? []) as UsageLogRow[];
   const totalTokens = usageLogs.reduce((sum, row) => sum + toNumber(row.tokens), 0);
   const totalCost = usageLogs.reduce((sum, row) => sum + toNumber(row.cost_usd), 0);
   const activeUserIds = new Set<string>();
 
-  for (const row of activeConversationsRes.data ?? []) activeUserIds.add((row as { user_id: string }).user_id);
-  for (const row of activeMessagesRes.data ?? []) activeUserIds.add((row as { user_id: string }).user_id);
-  for (const row of activeDocumentsRes.data ?? []) activeUserIds.add((row as { user_id: string }).user_id);
+  for (const row of activeConversationsRes.data ?? [])
+    activeUserIds.add((row as { user_id: string }).user_id);
+  for (const row of activeMessagesRes.data ?? [])
+    activeUserIds.add((row as { user_id: string }).user_id);
+  for (const row of activeDocumentsRes.data ?? [])
+    activeUserIds.add((row as { user_id: string }).user_id);
 
   const readyDocumentMetadata = (documentsMetadataRes.data ?? []) as Array<{
     metadata: Record<string, unknown> | null;
@@ -299,9 +310,7 @@ export async function getTokenUsageByDay(days: number = 30): Promise<TokenUsageB
 export async function getModelUsageStats(): Promise<ModelUsage[]> {
   const supabase = createAdminSupabaseClient();
 
-  const { data } = await supabase
-    .from("usage_logs")
-    .select("tokens, cost_usd, metadata");
+  const { data } = await supabase.from("usage_logs").select("tokens, cost_usd, metadata");
 
   const grouped = new Map<string, { count: number; tokens: number; cost: number }>();
   for (const row of (data ?? []) as UsageLogRow[]) {
@@ -334,7 +343,10 @@ export async function getUploadStatsByDay(days: number = 30): Promise<UploadStat
     .gte("created_at", since)
     .order("created_at", { ascending: true });
 
-  const grouped = new Map<string, { uploads: number; ready: number; processing: number; failed: number }>();
+  const grouped = new Map<
+    string,
+    { uploads: number; ready: number; processing: number; failed: number }
+  >();
   for (const row of (data ?? []) as Array<{ status: DocumentStatus; created_at: string }>) {
     const date = row.created_at?.slice(0, 10) ?? "";
     const existing = grouped.get(date) ?? { uploads: 0, ready: 0, processing: 0, failed: 0 };
@@ -413,7 +425,10 @@ export async function getRecentConversations(limit: number = 10): Promise<Recent
   const profiles = emailMap((profilesRes.data ?? []) as ProfileRow[]);
   const messageCounts = new Map<string, number>();
   for (const message of (messagesRes.data ?? []) as MessageConversationRow[]) {
-    messageCounts.set(message.conversation_id, (messageCounts.get(message.conversation_id) ?? 0) + 1);
+    messageCounts.set(
+      message.conversation_id,
+      (messageCounts.get(message.conversation_id) ?? 0) + 1,
+    );
   }
 
   return conversations.map((conversation) => ({

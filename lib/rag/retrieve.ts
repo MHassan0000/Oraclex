@@ -21,9 +21,7 @@ export type RetrievalResult = MatchChunkResult & {
  * Retrieve relevant document chunks using pgvector similarity search.
  * Uses the match_document_chunks RPC function defined in the migration.
  */
-export async function retrieveChunks(
-  options: RetrievalOptions,
-): Promise<RetrievalResult[]> {
+export async function retrieveChunks(options: RetrievalOptions): Promise<RetrievalResult[]> {
   const {
     query,
     userId,
@@ -100,12 +98,14 @@ async function retrieveChunksByKeyword(
   const { data, error } = await query;
   if (error) throw new Error(`Keyword retrieval failed: ${error.message}`);
 
-  return ((data ?? []) as Array<{
-    id: string;
-    document_id: string;
-    content: string;
-    metadata: Record<string, unknown>;
-  }>)
+  return (
+    (data ?? []) as Array<{
+      id: string;
+      document_id: string;
+      content: string;
+      metadata: Record<string, unknown>;
+    }>
+  )
     .map((chunk) => {
       const lower = chunk.content.toLowerCase();
       const matchedTerms = terms.filter((term) => lower.includes(term));
@@ -163,10 +163,7 @@ export async function multiQueryRetrieve(
  * Rerank results by combining vector similarity with keyword matching.
  * Simple hybrid scoring: 0.7 * vector_score + 0.3 * keyword_score.
  */
-export function rerankResults(
-  results: RetrievalResult[],
-  query: string,
-): RetrievalResult[] {
+export function rerankResults(results: RetrievalResult[], query: string): RetrievalResult[] {
   const queryTerms = query
     .toLowerCase()
     .split(/\s+/)
@@ -191,11 +188,7 @@ export function rerankResults(
 /**
  * Contextual compression: trim chunks to only the most relevant sentences.
  */
-export function compressContext(
-  content: string,
-  query: string,
-  maxSentences: number = 5,
-): string {
+export function compressContext(content: string, query: string, maxSentences: number = 5): string {
   const sentences = content
     .split(/[.!?]+/)
     .map((s) => s.trim())
@@ -203,7 +196,10 @@ export function compressContext(
 
   if (sentences.length <= maxSentences) return content;
 
-  const queryTerms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const queryTerms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
 
   const scored = sentences.map((sentence) => {
     const lower = sentence.toLowerCase();

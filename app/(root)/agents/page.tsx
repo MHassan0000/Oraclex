@@ -58,7 +58,8 @@ export default async function AgentsPage() {
               Multi-agent RAG orchestration for production chat workflows.
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
-              The backend wires the chat API into workflow state, OpenRouter streaming, Supabase persistence, memory summaries, document retrieval, and source citations.
+              The backend wires the chat API into workflow state, OpenRouter streaming, Supabase
+              persistence, memory summaries, document retrieval, and source citations.
             </p>
           </div>
           <div className="rounded-3xl border border-border/60 bg-background/60 p-5">
@@ -81,7 +82,10 @@ export default async function AgentsPage() {
         {agents.map((agent) => {
           const Icon = agent.icon;
           return (
-            <article key={agent.name} className="rounded-[2rem] border border-border/60 bg-card p-6 shadow-sm">
+            <article
+              key={agent.name}
+              className="rounded-[2rem] border border-border/60 bg-card p-6 shadow-sm"
+            >
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-primary/10 p-3 text-primary">
                   <Icon className="h-5 w-5" />
@@ -93,7 +97,9 @@ export default async function AgentsPage() {
                       {agent.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{agent.description}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {agent.description}
+                  </p>
                   <p className="mt-4 rounded-2xl border border-border/60 bg-background/50 px-3 py-2 text-xs text-muted-foreground">
                     {agent.detail}
                   </p>

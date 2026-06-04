@@ -194,8 +194,7 @@ export function getFreeModelIds(): string[] {
   return MODEL_LIST.filter((model) => model.isFree).map((model) => model.id);
 }
 
-const FREE_OPENROUTER_MODEL_ID_PATTERN =
-  /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*:free$/i;
+const FREE_OPENROUTER_MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*:free$/i;
 
 export function isAllowedModelId(modelId: string): boolean {
   return MODEL_IDS.includes(modelId) || FREE_OPENROUTER_MODEL_ID_PATTERN.test(modelId);

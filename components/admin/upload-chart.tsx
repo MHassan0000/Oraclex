@@ -48,11 +48,15 @@ export function UploadChart({ data }: UploadChartProps) {
               boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             }}
           />
-          <Legend
-            wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
-          />
+          <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
           <Bar dataKey="ready" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} name="Ready" />
-          <Bar dataKey="processing" stackId="a" fill="#6366f1" radius={[0, 0, 0, 0]} name="Processing" />
+          <Bar
+            dataKey="processing"
+            stackId="a"
+            fill="#6366f1"
+            radius={[0, 0, 0, 0]}
+            name="Processing"
+          />
           <Bar dataKey="failed" stackId="a" fill="#ef4444" radius={[8, 8, 0, 0]} name="Failed" />
         </BarChart>
       </ResponsiveContainer>

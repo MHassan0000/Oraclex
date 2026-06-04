@@ -108,7 +108,7 @@ function toModelConfig(model: OpenRouterModel): ModelConfig {
   const isFree = model.id.endsWith(":free");
   return {
     id: model.id,
-    name: isFree ? normalizeModelName(model) : model.name ?? model.id,
+    name: isFree ? normalizeModelName(model) : (model.name ?? model.id),
     provider: inferProvider(model.id),
     contextWindow: model.context_length ?? 128_000,
     maxOutput: 8_192,
@@ -230,9 +230,7 @@ export async function getAvailableOpenRouterModels(): Promise<ModelConfig[]> {
 /**
  * Non-streaming completion. Returns the full response at once.
  */
-export async function createCompletion(
-  options: CompletionOptions,
-): Promise<CompletionResult> {
+export async function createCompletion(options: CompletionOptions): Promise<CompletionResult> {
   const modelId = options.model ?? DEFAULT_MODEL;
   const startTime = Date.now();
 
@@ -374,7 +372,11 @@ export async function createStreamingCompletion(
 
             const data = trimmed.slice(6);
             if (data === "[DONE]") {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: "", done: true, model: activeModel })}\n\n`));
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ content: "", done: true, model: activeModel })}\n\n`,
+                ),
+              );
               controller.close();
               return;
             }
@@ -414,14 +416,9 @@ export function estimateTokens(text: string): number {
 /**
  * Calculate cost in USD for a completion.
  */
-export function calculateCost(
-  modelId: string,
-  inputTokens: number,
-  outputTokens: number,
-): number {
+export function calculateCost(modelId: string, inputTokens: number, outputTokens: number): number {
   const config = getModelConfig(modelId);
   return (
-    (inputTokens / 1000) * config.inputCostPer1k +
-    (outputTokens / 1000) * config.outputCostPer1k
+    (inputTokens / 1000) * config.inputCostPer1k + (outputTokens / 1000) * config.outputCostPer1k
   );
 }

@@ -27,8 +27,8 @@ export function DashboardHero() {
             Orchestrate retrieval, evaluation, and agent routing in one ambient workspace.
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
-            Monitor ingestion health, tune prompt stacks, and track knowledge freshness across
-            every customer deployment.
+            Monitor ingestion health, tune prompt stacks, and track knowledge freshness across every
+            customer deployment.
           </p>
         </MotionDiv>
         <MotionDiv variants={fadeInUp} className="flex flex-wrap gap-3">

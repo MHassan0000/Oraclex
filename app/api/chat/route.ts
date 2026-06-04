@@ -35,9 +35,6 @@ export async function POST(request: NextRequest) {
     return await executeWorkflow(conversationId, user.id, message, selectedModel);
   } catch (error) {
     console.error("Chat API error:", error);
-    return NextResponse.json(
-      { error: "Chat completion failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Chat completion failed" }, { status: 500 });
   }
 }

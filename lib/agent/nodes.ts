@@ -2,11 +2,7 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { buildMemoryContext, formatMemoryForPrompt, maybeUpdateSummary } from "@/lib/ai/memory";
-import {
-  multiQueryRetrieve,
-  rerankResults,
-  compressContext,
-} from "@/lib/rag/retrieve";
+import { multiQueryRetrieve, rerankResults, compressContext } from "@/lib/rag/retrieve";
 import {
   createCompletion,
   createStreamingCompletion,
@@ -137,9 +133,7 @@ export const retrieverNode: WorkflowNode = async (state) => {
   const next = advanceNode(state, "retriever");
 
   try {
-    const queries = next.rewrittenQueries.length > 0
-      ? next.rewrittenQueries
-      : [next.userMessage];
+    const queries = next.rewrittenQueries.length > 0 ? next.rewrittenQueries : [next.userMessage];
 
     const results = await multiQueryRetrieve(queries, {
       matchCount: 8,
@@ -205,9 +199,7 @@ export const rerankerNode: WorkflowNode = async (state) => {
 export const contextBuilderNode: WorkflowNode = async (state) => {
   const next = advanceNode(state, "context_builder");
 
-  const chunks = next.rerankedChunks.length > 0
-    ? next.rerankedChunks
-    : next.retrievedChunks;
+  const chunks = next.rerankedChunks.length > 0 ? next.rerankedChunks : next.retrievedChunks;
 
   // Build context block from chunks
   let contextBlock = "";
@@ -223,9 +215,7 @@ export const contextBuilderNode: WorkflowNode = async (state) => {
   }
 
   // Build memory context
-  const memoryBlock = next.memory
-    ? formatMemoryForPrompt(next.memory)
-    : "";
+  const memoryBlock = next.memory ? formatMemoryForPrompt(next.memory) : "";
 
   // System prompt
   const systemPrompt = `You are Oraclex, an advanced AI assistant powered by a Retrieval-Augmented Generation (RAG) system. Your responses are grounded in the user's knowledge base.
@@ -256,9 +246,7 @@ ${contextBlock}`;
 export const citationGeneratorNode: WorkflowNode = async (state) => {
   const next = advanceNode(state, "citation_generator");
 
-  const chunks = next.rerankedChunks.length > 0
-    ? next.rerankedChunks
-    : next.retrievedChunks;
+  const chunks = next.rerankedChunks.length > 0 ? next.rerankedChunks : next.retrievedChunks;
 
   // Fetch document titles
   const supabase = await createServerSupabaseClient();
@@ -361,10 +349,7 @@ export const fallbackNode: WorkflowNode = async (state) => {
 // Node 10: Post-completion persistence
 // ──────────────────────────────────────────
 
-export async function persistCompletion(
-  state: WorkflowState,
-  fullContent: string,
-): Promise<void> {
+export async function persistCompletion(state: WorkflowState, fullContent: string): Promise<void> {
   const supabase = await createServerSupabaseClient();
   const inputTokens =
     state.inputTokens ||

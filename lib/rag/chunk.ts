@@ -23,10 +23,7 @@ const DEFAULT_CHUNK_OVERLAP = 200;
  * Split text into semantically meaningful chunks using
  * LangChain's RecursiveCharacterTextSplitter.
  */
-export async function chunkText(
-  text: string,
-  options: ChunkOptions = {},
-): Promise<ChunkResult[]> {
+export async function chunkText(text: string, options: ChunkOptions = {}): Promise<ChunkResult[]> {
   const {
     chunkSize = DEFAULT_CHUNK_SIZE,
     chunkOverlap = DEFAULT_CHUNK_OVERLAP,
@@ -37,15 +34,15 @@ export async function chunkText(
     chunkSize,
     chunkOverlap,
     separators: [
-      "\n\n",   // Paragraph breaks
-      "\n",     // Line breaks
-      ". ",     // Sentences
-      "? ",     // Questions
-      "! ",     // Exclamations
-      "; ",     // Semicolons
-      ", ",     // Commas
-      " ",      // Words
-      "",       // Characters
+      "\n\n", // Paragraph breaks
+      "\n", // Line breaks
+      ". ", // Sentences
+      "? ", // Questions
+      "! ", // Exclamations
+      "; ", // Semicolons
+      ", ", // Commas
+      " ", // Words
+      "", // Characters
     ],
     lengthFunction: (text) => text.length,
   });

@@ -28,7 +28,7 @@ export function validateFile(file: File): FileValidationResult {
   const extension = getFileExtension(file.name);
   const fileType = resolveDocumentFileType(file.type, extension);
 
-  if (!ALLOWED_EXTENSIONS.includes(extension as typeof ALLOWED_EXTENSIONS[number])) {
+  if (!ALLOWED_EXTENSIONS.includes(extension as (typeof ALLOWED_EXTENSIONS)[number])) {
     return {
       valid: false,
       error: `Unsupported file type: ${extension}. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
@@ -37,7 +37,7 @@ export function validateFile(file: File): FileValidationResult {
     };
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(fileType as typeof ALLOWED_MIME_TYPES[number])) {
+  if (!ALLOWED_MIME_TYPES.includes(fileType as (typeof ALLOWED_MIME_TYPES)[number])) {
     return {
       valid: false,
       error: `Unsupported MIME type: ${fileType}.`,
@@ -84,11 +84,16 @@ export function resolveDocumentFileType(
 
   if (mimeType && mimeType !== "application/octet-stream") return mimeType;
   switch (extension) {
-    case ".pdf": return "application/pdf";
-    case ".txt": return "text/plain";
-    case ".md": return "text/markdown";
-    case ".csv": return "text/csv";
-    default: return "application/octet-stream";
+    case ".pdf":
+      return "application/pdf";
+    case ".txt":
+      return "text/plain";
+    case ".md":
+      return "text/markdown";
+    case ".csv":
+      return "text/csv";
+    default:
+      return "application/octet-stream";
   }
 }
 

@@ -92,7 +92,8 @@ export function ChatComposer({
           >
             {modelOptions.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.name}{model.isFree ? " - Free" : ""}
+                {model.name}
+                {model.isFree ? " - Free" : ""}
               </option>
             ))}
           </select>
@@ -108,7 +109,7 @@ export function ChatComposer({
             placeholder={
               isStreaming
                 ? "Waiting for response..."
-                : placeholder ?? "Ask anything about your knowledge base..."
+                : (placeholder ?? "Ask anything about your knowledge base...")
             }
             disabled={disabled}
             className={cn(

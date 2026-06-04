@@ -70,8 +70,7 @@ export async function executeWorkflow(
     state = await citationGeneratorNode(state);
 
     // ── Phase 8: Response generation (produces the stream) ──
-    const { state: streamState, stream: upstreamStream } =
-      await responseGenerationNode(state);
+    const { state: streamState, stream: upstreamStream } = await responseGenerationNode(state);
     state = streamState;
 
     // ── Wrap in SSE stream with citation injection ──
@@ -223,9 +222,7 @@ async function buildFallbackResponse(state: WorkflowState): Promise<Response> {
 
   const fallbackStream = new ReadableStream({
     start(controller) {
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({ status: "streaming" })}\n\n`),
-      );
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: "streaming" })}\n\n`));
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ content: fallbackState.response })}\n\n`),
       );

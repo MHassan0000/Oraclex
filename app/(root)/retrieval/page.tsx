@@ -31,7 +31,8 @@ export default async function RetrievalPage() {
               Monitor how your knowledge base is retrieved and grounded.
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
-              Oraclex uses upload ingestion, chunking, embeddings, pgvector similarity search, reranking, memory, and citations to ground every answer in your documents.
+              Oraclex uses upload ingestion, chunking, embeddings, pgvector similarity search,
+              reranking, memory, and citations to ground every answer in your documents.
             </p>
           </div>
         </div>
@@ -41,7 +42,10 @@ export default async function RetrievalPage() {
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <div key={metric.label} className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
+            <div
+              key={metric.label}
+              className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm"
+            >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{metric.label}</p>
                 <div className="rounded-2xl bg-primary/10 p-2 text-primary">
@@ -58,7 +62,9 @@ export default async function RetrievalPage() {
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Indexed sources</h2>
-            <p className="text-sm text-muted-foreground">Document readiness for semantic retrieval.</p>
+            <p className="text-sm text-muted-foreground">
+              Document readiness for semantic retrieval.
+            </p>
           </div>
         </div>
         <div className="min-w-0 overflow-x-auto">
@@ -75,10 +81,16 @@ export default async function RetrievalPage() {
               {documents.length ? (
                 documents.slice(0, 12).map((document) => (
                   <tr key={document.id} className="border-b border-border/40 last:border-0">
-                    <td className="max-w-[18rem] truncate py-4 font-medium text-foreground">{document.title}</td>
+                    <td className="max-w-[18rem] truncate py-4 font-medium text-foreground">
+                      {document.title}
+                    </td>
                     <td className="py-4 capitalize text-muted-foreground">{document.status}</td>
-                    <td className="py-4 text-muted-foreground">{document.file_type ?? "unknown"}</td>
-                    <td className="py-4 text-right text-muted-foreground">{(document.token_count ?? 0).toLocaleString()}</td>
+                    <td className="py-4 text-muted-foreground">
+                      {document.file_type ?? "unknown"}
+                    </td>
+                    <td className="py-4 text-right text-muted-foreground">
+                      {(document.token_count ?? 0).toLocaleString()}
+                    </td>
                   </tr>
                 ))
               ) : (
