@@ -3,6 +3,8 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { buildMemoryContext, formatMemoryForPrompt, maybeUpdateSummary } from "@/lib/ai/memory";
 import { multiQueryRetrieve, rerankResults, compressContext } from "@/lib/rag/retrieve";
+import { getUserSystemPrompt } from "@/lib/db/settings";
+import { buildRagSystemPrompt } from "@/lib/settings/system-prompt";
 import {
   createCompletion,
   createStreamingCompletion,
@@ -216,21 +218,15 @@ export const contextBuilderNode: WorkflowNode = async (state) => {
 
   // Build memory context
   const memoryBlock = next.memory ? formatMemoryForPrompt(next.memory) : "";
+  let userSystemPrompt = "";
+  try {
+    userSystemPrompt = await getUserSystemPrompt(next.userId);
+  } catch (error) {
+    console.warn("Failed to load custom system prompt; using default RAG prompt:", error);
+  }
 
   // System prompt
-  const systemPrompt = `You are Oraclex, an advanced AI assistant powered by a Retrieval-Augmented Generation (RAG) system. Your responses are grounded in the user's knowledge base.
-
-Guidelines:
-- Base answers primarily on the provided context from the user's documents
-- Cite sources naturally using [Source N] notation when referencing specific information
-- If the context doesn't contain enough information, say so clearly
-- Never fabricate information not present in the provided context
-- Be concise, accurate, and helpful
-- Use markdown formatting for readability
-- If asked about topics outside the provided context, acknowledge the limitation
-- When citing, reference the source number that matches the retrieved context${memoryBlock}
-
-${contextBlock}`;
+  const systemPrompt = buildRagSystemPrompt({ memoryBlock, contextBlock, userSystemPrompt });
 
   return {
     ...next,

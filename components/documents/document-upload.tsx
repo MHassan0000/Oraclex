@@ -34,6 +34,57 @@ type FileUploadItem = {
   documentId?: string;
 };
 
+type UploadThingServerData = {
+  uploadedBy?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  fileKey?: string;
+  checksum?: string;
+};
+
+type UploadThingFileResponse = {
+  name?: string;
+  size?: number;
+  type?: string;
+  key?: string;
+  url?: string;
+  appUrl?: string;
+  ufsUrl?: string;
+  fileHash?: string;
+  serverData?: UploadThingServerData | null;
+};
+
+type UploadedDocumentFile = {
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  fileKey?: string;
+  checksum?: string;
+};
+
+function normalizeUploadedFile(uploadedFile: UploadThingFileResponse): UploadedDocumentFile {
+  const serverData = uploadedFile.serverData ?? {};
+  const fileName = serverData.fileName ?? uploadedFile.name;
+  const fileUrl = serverData.fileUrl ?? uploadedFile.ufsUrl ?? uploadedFile.url ?? uploadedFile.appUrl;
+  const fileSize = serverData.fileSize ?? uploadedFile.size;
+
+  if (!fileName || !fileUrl || !fileSize) {
+    throw new Error("Upload completed, but file metadata was incomplete. Please try again.");
+  }
+
+  return {
+    fileUrl,
+    fileName,
+    fileSize,
+    fileType: resolveDocumentFileType(serverData.fileType ?? uploadedFile.type, fileName),
+    fileKey: serverData.fileKey ?? uploadedFile.key,
+    checksum: serverData.checksum ?? uploadedFile.fileHash,
+  };
+}
+
 function getFileIcon(fileName: string) {
   const ext = fileName.split(".").pop()?.toLowerCase();
   switch (ext) {
@@ -157,40 +208,44 @@ export function DocumentUpload() {
         onClientUploadComplete={async (res) => {
           if (!res?.length) return;
 
-          for (const uploadedFile of res) {
-            const serverData = uploadedFile.serverData as {
-              uploadedBy: string;
-              fileUrl: string;
-              fileName: string;
-              fileSize: number;
-              fileType: string;
-              fileKey: string;
-            };
-
-            const uploadId = takeUploadId(serverData.fileName);
-            const fileType = resolveDocumentFileType(serverData.fileType, serverData.fileName);
+          for (const uploadResult of res) {
+            const uploadedFile = normalizeUploadedFile(uploadResult as UploadThingFileResponse);
+            const uploadId = takeUploadId(uploadedFile.fileName);
 
             try {
-              // Create document record
-              const doc = await createDocumentAction({
-                title: serverData.fileName.replace(/\.[^.]+$/, ""),
-                fileName: serverData.fileName,
-                fileType,
-                storageUrl: serverData.fileUrl,
-                fileSize: serverData.fileSize,
-              });
-
-              // Update file status
               setFiles((prev) =>
                 prev.map((f) =>
-                  matchesUploadItem(f, uploadId, serverData.fileName)
-                    ? { ...f, status: "processing", progress: 95, documentId: doc.id }
+                  matchesUploadItem(f, uploadId, uploadedFile.fileName)
+                    ? { ...f, status: "processing", progress: 95 }
+                    : f,
+                ),
+              );
+
+              // Create document record
+              const doc = await createDocumentAction({
+                title: uploadedFile.fileName.replace(/\.[^.]+$/, ""),
+                fileName: uploadedFile.fileName,
+                fileType: uploadedFile.fileType,
+                storageUrl: uploadedFile.fileUrl,
+                fileSize: uploadedFile.fileSize,
+                checksum: uploadedFile.checksum,
+              });
+
+              setFiles((prev) =>
+                prev.map((f) =>
+                  matchesUploadItem(f, uploadId, uploadedFile.fileName)
+                    ? { ...f, documentId: doc.id }
                     : f,
                 ),
               );
 
               // Trigger ingestion
-              await triggerIngestion(doc.id, serverData.fileUrl, serverData.fileName, fileType);
+              await triggerIngestion(
+                doc.id,
+                uploadedFile.fileUrl,
+                uploadedFile.fileName,
+                uploadedFile.fileType,
+              );
 
               setFiles((prev) =>
                 prev.map((f) =>
@@ -198,13 +253,13 @@ export function DocumentUpload() {
                 ),
               );
 
-              appToast.success(`"${serverData.fileName}" uploaded and processed`);
+              appToast.success(`"${uploadedFile.fileName}" uploaded and processed`);
               router.refresh();
             } catch (error) {
               const message = error instanceof Error ? error.message : "Upload failed";
               setFiles((prev) =>
                 prev.map((f) =>
-                  matchesUploadItem(f, uploadId, serverData.fileName)
+                  matchesUploadItem(f, uploadId, uploadedFile.fileName)
                     ? { ...f, status: "error", error: message }
                     : f,
                 ),

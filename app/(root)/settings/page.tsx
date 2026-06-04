@@ -2,10 +2,13 @@ import Link from "next/link";
 import { KeyRound, Settings, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SystemPromptForm } from "@/components/settings/system-prompt-form";
 import { requireUser } from "@/lib/auth/session";
+import { getUserSystemPrompt } from "@/lib/db/settings";
 
 export default async function SettingsPage() {
   const user = await requireUser("/settings");
+  const systemPrompt = await getUserSystemPrompt(user.id);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -20,6 +23,8 @@ export default async function SettingsPage() {
           Manage account settings and production configuration for Oraclex.
         </p>
       </section>
+
+      <SystemPromptForm initialSystemPrompt={systemPrompt} />
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-3xl border border-border/60 bg-card p-5">

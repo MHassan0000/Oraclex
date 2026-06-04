@@ -6,11 +6,14 @@ import { validateFileSecure } from "@/lib/security/file-validation";
 const f = createUploadthing();
 
 export const uploadRouter = {
-  documentUploader: f({
-    pdf: { maxFileSize: "16MB", maxFileCount: 10 },
-    text: { maxFileSize: "8MB", maxFileCount: 10 },
-    blob: { maxFileSize: "8MB", maxFileCount: 10 },
-  })
+  documentUploader: f(
+    {
+      pdf: { maxFileSize: "16MB", maxFileCount: 10 },
+      text: { maxFileSize: "8MB", maxFileCount: 10 },
+      blob: { maxFileSize: "8MB", maxFileCount: 10 },
+    },
+    { awaitServerData: false },
+  )
     .middleware(async ({ files }) => {
       const user = await getUser();
       if (!user) throw new Error("Unauthorized");

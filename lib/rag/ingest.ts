@@ -10,7 +10,6 @@ import {
   EMBEDDING_PROVIDER,
   EMBEDDING_DIMENSIONS,
 } from "@/lib/rag/embeddings";
-import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { validateFileSecure } from "@/lib/security/file-validation";
 
 export type IngestionResult = {
@@ -20,6 +19,27 @@ export type IngestionResult = {
   totalTokens: number;
   durationMs: number;
 };
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+
+async function updateDocumentStatus(
+  supabase: SupabaseServerClient,
+  documentId: string,
+  userId: string,
+  status: "processing" | "ready" | "failed" | "archived",
+  error?: string,
+) {
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({
+      status,
+      ...(error ? { metadata: { error } } : {}),
+    })
+    .eq("id", documentId)
+    .eq("user_id", userId);
+
+  if (updateError) throw updateError;
+}
 
 /**
  * Full ingestion pipeline:
@@ -51,14 +71,14 @@ export async function ingestDocument(
     const fileValidation = validateFileSecure(fileName, fileType, buffer.byteLength, arrayBuffer);
     if (!fileValidation.valid) {
       const message = fileValidation.error ?? "Invalid file content";
-      await updateDocumentStatusAction(documentId, "failed", message);
+      await updateDocumentStatus(supabase, documentId, userId, "failed", message);
       throw new Error(message);
     }
 
     // 2. Extract text
     const rawText = await extractText(buffer, fileType, fileName);
     if (!rawText.trim()) {
-      await updateDocumentStatusAction(documentId, "failed", "No text content found");
+      await updateDocumentStatus(supabase, documentId, userId, "failed", "No text content found");
       return {
         documentId,
         chunksCreated: 0,
@@ -82,7 +102,7 @@ export async function ingestDocument(
         });
 
     if (chunks.length === 0) {
-      await updateDocumentStatusAction(documentId, "failed", "No chunks produced");
+      await updateDocumentStatus(supabase, documentId, userId, "failed", "No chunks produced");
       return {
         documentId,
         chunksCreated: 0,
@@ -176,7 +196,11 @@ export async function ingestDocument(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown ingestion error";
-    await updateDocumentStatusAction(documentId, "failed", message);
+    await updateDocumentStatus(supabase, documentId, userId, "failed", message).catch(
+      (statusError) => {
+        console.error("Failed to update document status after ingestion error:", statusError);
+      },
+    );
     throw error;
   }
 }
