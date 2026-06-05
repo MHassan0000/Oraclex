@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getUser } from "@/lib/auth/session";
-import { downloadReportExport, getReportExport, incrementReportDownload } from "@/lib/db/reports";
+import {
+  downloadReportExport,
+  getReportExport,
+  getReportExports,
+  incrementReportDownload,
+} from "@/lib/db/reports";
+import { getReportErrorStatus } from "@/lib/reports/errors";
 import { reportFormatSchema } from "@/lib/reports/schemas";
 import type { ReportFormat } from "@/lib/db/types";
 
@@ -21,6 +27,8 @@ const EXTENSIONS: Record<ReportFormat, string> = {
   csv: "csv",
 };
 
+const FORMAT_PRIORITY: ReportFormat[] = ["pdf", "markdown", "csv"];
+
 function getFileName(path: string, format: ReportFormat): string {
   const name = path.split("/").pop();
   return name || `oraclex-report.${EXTENSIONS[format]}`;
@@ -31,13 +39,15 @@ export async function GET(request: NextRequest, { params }: ReportRouteContext) 
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const formatResult = reportFormatSchema.safeParse(request.nextUrl.searchParams.get("format"));
-    if (!formatResult.success) {
-      return NextResponse.json({ error: "Invalid report format" }, { status: 400 });
-    }
-
     const { id } = await params;
-    const reportExport = await getReportExport(user.id, id, formatResult.data);
+    const requestedFormat = request.nextUrl.searchParams.get("format");
+    const formatResult = reportFormatSchema.safeParse(requestedFormat);
+    const reportExport = formatResult.success
+      ? await getReportExport(user.id, id, formatResult.data)
+      : (await getReportExports(user.id, id)).sort(
+          (a, b) => FORMAT_PRIORITY.indexOf(a.format) - FORMAT_PRIORITY.indexOf(b.format),
+        )[0];
+
     if (!reportExport) return NextResponse.json({ error: "Report export not found" }, { status: 404 });
 
     const blob = await downloadReportExport(reportExport.storage_path);
@@ -45,14 +55,14 @@ export async function GET(request: NextRequest, { params }: ReportRouteContext) 
 
     return new Response(blob, {
       headers: {
-        "Content-Type": CONTENT_TYPES[formatResult.data],
-        "Content-Disposition": `attachment; filename="${getFileName(reportExport.storage_path, formatResult.data)}"`,
+        "Content-Type": CONTENT_TYPES[reportExport.format],
+        "Content-Disposition": `attachment; filename="${getFileName(reportExport.storage_path, reportExport.format)}"`,
         "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {
     console.error("Report download error:", error);
     const message = error instanceof Error ? error.message : "Failed to download report";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: getReportErrorStatus(message) });
   }
 }

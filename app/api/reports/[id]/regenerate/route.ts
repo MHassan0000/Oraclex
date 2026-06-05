@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getUser } from "@/lib/auth/session";
+import { getReportErrorStatus } from "@/lib/reports/errors";
 import { regenerateReport } from "@/lib/reports/generate";
 
 type ReportRouteContext = {
@@ -18,6 +19,6 @@ export async function POST(_request: Request, { params }: ReportRouteContext) {
   } catch (error) {
     console.error("Report regenerate error:", error);
     const message = error instanceof Error ? error.message : "Failed to regenerate report";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: getReportErrorStatus(message) });
   }
 }

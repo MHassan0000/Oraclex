@@ -7,7 +7,6 @@ import { Download, FileText, Loader2, RefreshCcw, Search, Trash2 } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { appToast } from "@/lib/client/toast";
-import type { ReportFormat } from "@/lib/db/types";
 import {
   getReportFormatLabel,
   getReportSourceLabel,
@@ -48,10 +47,6 @@ export function ReportsPageClient({ initialReports }: ReportsPageClientProps) {
     );
   }, [query, reports]);
 
-  function downloadReport(reportId: string, format: ReportFormat) {
-    window.location.href = `/api/reports/${reportId}/download?format=${format}`;
-  }
-
   function deleteReport(reportId: string) {
     setPendingId(reportId);
     startTransition(async () => {
@@ -76,7 +71,7 @@ export function ReportsPageClient({ initialReports }: ReportsPageClientProps) {
     startTransition(async () => {
       try {
         const response = await fetch(`/api/reports/${reportId}/regenerate`, { method: "POST" });
-        const payload = (await response.json()) as Partial<GeneratedReportPayload> & { error?: string };
+        const payload = (await response.json().catch(() => ({}))) as Partial<GeneratedReportPayload> & { error?: string };
         if (!response.ok || !payload.report) {
           throw new Error(payload.error ?? "Failed to regenerate report");
         }
@@ -138,6 +133,11 @@ export function ReportsPageClient({ initialReports }: ReportsPageClientProps) {
                       <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                         {getReportSourceLabel(report.source_type)}
                       </span>
+                      {report.status === "failed" ? (
+                        <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+                          Needs regeneration
+                        </span>
+                      ) : null}
                       <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                         {formatDate(report.last_generated_at)}
                       </span>
@@ -180,15 +180,10 @@ export function ReportsPageClient({ initialReports }: ReportsPageClientProps) {
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   {report.exports.map((reportExport) => (
-                    <Button
-                      key={reportExport.id}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-2 rounded-full"
-                      onClick={() => downloadReport(report.id, reportExport.format)}
-                    >
-                      <Download className="h-3.5 w-3.5" /> {getReportFormatLabel(reportExport.format)}
+                    <Button key={reportExport.id} asChild size="sm" variant="outline" className="gap-2 rounded-full">
+                      <a href={`/api/reports/${report.id}/download/${reportExport.format}`}>
+                        <Download className="h-3.5 w-3.5" /> {getReportFormatLabel(reportExport.format)}
+                      </a>
                     </Button>
                   ))}
                 </div>

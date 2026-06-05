@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
 import { createCompletion, estimateTokens } from "@/lib/ai/openrouter";
+import { serverEnv } from "@/lib/env/server";
 import { multiQueryRetrieve, rerankResults, type RetrievalResult } from "@/lib/rag/retrieve";
 import type { Document, Message, Report, ReportExport, ReportFormat } from "@/lib/db/types";
 import { REPORTS_BUCKET, deleteReport, getReport } from "@/lib/db/reports";
@@ -17,6 +18,8 @@ import {
 } from "@/lib/reports/types";
 
 const MAX_REPORT_DOCUMENTS = 20;
+const MAX_KNOWLEDGE_BASE_REPORT_DOCUMENTS = 1000;
+const MAX_RETRIEVAL_QUERY_LENGTH = 3000;
 const MAX_CONTEXT_CHUNKS = 18;
 const MAX_CHAT_MESSAGES = 40;
 
@@ -31,7 +34,12 @@ type ReportContext = {
 
 function normalizeFormats(formats: ReportFormat[] | undefined): ReportFormat[] {
   const values = formats?.length ? formats : [...REPORT_FORMATS];
-  return REPORT_FORMATS.filter((format) => values.includes(format));
+  const normalized = REPORT_FORMATS.filter((format) => values.includes(format));
+  return normalized.length > 0 ? normalized : [...REPORT_FORMATS];
+}
+
+function getReportModel(): string {
+  return serverEnv.REPORT_MODEL ?? DEFAULT_MODEL;
 }
 
 function slugify(value: string): string {
@@ -63,7 +71,11 @@ function dedupeResults(results: RetrievalResult[]): RetrievalResult[] {
   return Array.from(byChunk.values()).sort((a, b) => b.similarity - a.similarity);
 }
 
-async function fetchDocuments(userId: string, documentIds?: string[]): Promise<Document[]> {
+async function fetchDocuments(
+  userId: string,
+  documentIds?: string[],
+  limit: number = MAX_REPORT_DOCUMENTS,
+): Promise<Document[]> {
   const supabase = await createServerSupabaseClient();
   let query = supabase
     .from("documents")
@@ -71,7 +83,7 @@ async function fetchDocuments(userId: string, documentIds?: string[]): Promise<D
     .eq("user_id", userId)
     .eq("status", "ready")
     .order("created_at", { ascending: false })
-    .limit(MAX_REPORT_DOCUMENTS);
+    .limit(limit);
 
   if (documentIds?.length) query = query.in("id", documentIds);
 
@@ -191,7 +203,7 @@ async function buildCurrentChatContext(userId: string, conversationId: string): 
       .filter(Boolean)
       .join("\n")
       .replace(/\s+/g, " "),
-    3000,
+    MAX_RETRIEVAL_QUERY_LENGTH,
   );
   const retrieved = query
     ? await multiQueryRetrieve([query, "key findings detailed analysis cited evidence"], {
@@ -215,7 +227,7 @@ async function buildCurrentChatContext(userId: string, conversationId: string): 
 }
 
 async function buildDocumentContext(userId: string, documentIds: string[]): Promise<ReportContext> {
-  const documents = await fetchDocuments(userId, documentIds);
+  const documents = await fetchDocuments(userId, documentIds, documentIds.length);
   if (documents.length === 0) throw new Error("No ready documents were found for report generation");
 
   const requestedIds = new Set(documentIds);
@@ -224,18 +236,17 @@ async function buildDocumentContext(userId: string, documentIds: string[]): Prom
     throw new Error("One or more selected documents are unavailable or still processing");
   }
 
-  const retrievedBatches = await Promise.all(
-    documents.map((document) =>
-      multiQueryRetrieve(
-        [
-          `${document.title} executive summary key findings detailed analysis conclusion`,
-          `${document.title} important evidence sources citations`,
-        ],
-        { userId, filterDocumentId: document.id, matchCount: 8 },
-      ),
-    ),
-  );
-  const retrieved = retrievedBatches.flat();
+  const retrieved: RetrievalResult[] = [];
+  for (const document of documents) {
+    const documentResults = await multiQueryRetrieve(
+      [
+        `${document.title} executive summary key findings detailed analysis conclusion`,
+        `${document.title} important evidence sources citations`,
+      ],
+      { userId, filterDocumentId: document.id, matchCount: 8 },
+    );
+    retrieved.push(...documentResults);
+  }
   const direct = retrieved.length ? [] : await fetchDirectChunks(userId, ownedIds, MAX_CONTEXT_CHUNKS);
   const query = documents.map((document) => document.title).join(" ");
   const results = dedupeResults(rerankResults([...retrieved, ...direct], query || "report"));
@@ -253,15 +264,20 @@ async function buildDocumentContext(userId: string, documentIds: string[]): Prom
 }
 
 async function buildKnowledgeBaseContext(userId: string): Promise<ReportContext> {
-  const documents = await fetchDocuments(userId);
+  const documents = await fetchDocuments(userId, undefined, MAX_KNOWLEDGE_BASE_REPORT_DOCUMENTS);
   if (documents.length === 0) throw new Error("No ready documents were found in the knowledge base");
+
+  const titleQuery = truncate(
+    documents.map((document) => document.title).join(" "),
+    MAX_RETRIEVAL_QUERY_LENGTH,
+  );
 
   const retrieved = await multiQueryRetrieve(
     [
       "executive summary key findings detailed analysis conclusion",
       "important evidence risks opportunities citations sources",
-      documents.map((document) => document.title).join(" "),
-    ],
+      titleQuery,
+    ].filter(Boolean),
     { userId, matchCount: MAX_CONTEXT_CHUNKS },
   );
   const direct = retrieved.length ? [] : await fetchDirectChunks(userId, documents.map((document) => document.id), MAX_CONTEXT_CHUNKS);
@@ -356,6 +372,7 @@ async function generateStructuredReport(context: ReportContext): Promise<{
   structured: StructuredReport;
   inputTokens: number;
   outputTokens: number;
+  model: string;
 }> {
   const sourceList = context.citations
     .map((citation) => `[Source ${citation.sourceNumber}] ${citation.documentTitle}: ${citation.excerpt}`)
@@ -384,7 +401,7 @@ Rules:
 - If context is limited, state the limitation clearly instead of inventing facts.`;
 
   const result = await createCompletion({
-    model: DEFAULT_MODEL,
+    model: getReportModel(),
     messages: [{ role: "user", content: userPrompt }],
     systemPrompt:
       "You are Oraclex Report Builder. Create accurate, source-grounded business reports for a RAG platform. Never fabricate facts outside the provided context. Preserve citation numbers exactly.",
@@ -396,6 +413,7 @@ Rules:
     structured: parseStructuredReport(result.content, context.citations),
     inputTokens: result.inputTokens || estimateTokens(userPrompt),
     outputTokens: result.outputTokens || estimateTokens(result.content),
+    model: result.model,
   };
 }
 
@@ -420,6 +438,7 @@ async function uploadReportExports(
   const admin = createAdminSupabaseClient();
   const supabase = await createServerSupabaseClient();
   const slug = slugify(title);
+  const uploadedPaths: string[] = [];
   const rows: Array<{
     user_id: string;
     report_id: string;
@@ -428,36 +447,64 @@ async function uploadReportExports(
     file_size: number;
   }> = [];
 
-  for (const format of formats) {
-    const payload = getExportPayload(format, structured);
-    const storagePath = `${userId}/${reportId}/${slug}.${payload.extension}`;
-    const { error } = await admin.storage.from(REPORTS_BUCKET).upload(storagePath, payload.body, {
-      contentType: payload.contentType,
-      upsert: true,
-    });
-    if (error) throw new Error(`Failed to upload ${format} export: ${error.message}`);
+  try {
+    for (const format of formats) {
+      const payload = getExportPayload(format, structured);
+      const storagePath = `${userId}/${reportId}/${slug}.${payload.extension}`;
+      const { error } = await admin.storage.from(REPORTS_BUCKET).upload(storagePath, payload.body, {
+        contentType: payload.contentType,
+        upsert: true,
+      });
+      if (error) throw new Error(`Failed to upload ${format} export: ${error.message}`);
+      uploadedPaths.push(storagePath);
 
-    rows.push({
-      user_id: userId,
-      report_id: reportId,
-      format,
-      storage_path: storagePath,
-      file_size: payload.body.byteLength,
-    });
+      rows.push({
+        user_id: userId,
+        report_id: reportId,
+        format,
+        storage_path: storagePath,
+        file_size: payload.body.byteLength,
+      });
+    }
+  } catch (error) {
+    await removeReportExportFiles(uploadedPaths, "partial report export upload");
+    throw error;
   }
 
-  await supabase.from("report_exports").delete().eq("user_id", userId).eq("report_id", reportId);
-  const { data, error } = await supabase.from("report_exports").insert(rows).select("*");
-  if (error) throw error;
+  const { data, error } = await supabase
+    .from("report_exports")
+    .upsert(rows, { onConflict: "report_id,format" })
+    .select("*");
+  if (error) {
+    await removeReportExportFiles(uploadedPaths, "uncommitted report export upload");
+    throw error;
+  }
+
+  const staleFormats = REPORT_FORMATS.filter((format) => !formats.includes(format));
+  for (const format of staleFormats) {
+    const { error: deleteError } = await supabase
+      .from("report_exports")
+      .delete()
+      .eq("user_id", userId)
+      .eq("report_id", reportId)
+      .eq("format", format);
+    if (deleteError) {
+      console.warn(`Failed to remove stale ${format} report export row:`, deleteError);
+    }
+  }
+
   return (data ?? []) as ReportExport[];
 }
 
-async function removeExistingExports(userId: string, report: ReportListItem): Promise<void> {
-  const paths = report.exports.map((item) => item.storage_path);
-  if (paths.length === 0) return;
+async function removeReportExportFiles(paths: string[], reason: string): Promise<void> {
+  const uniquePaths = [...new Set(paths)];
+  if (uniquePaths.length === 0) return;
 
   const admin = createAdminSupabaseClient();
-  await admin.storage.from(REPORTS_BUCKET).remove(paths);
+  const { error } = await admin.storage.from(REPORTS_BUCKET).remove(uniquePaths);
+  if (error) {
+    console.warn(`Failed to remove ${reason}:`, error);
+  }
 }
 
 type GenerateReportOptions = {
@@ -472,16 +519,17 @@ export async function generateReport(
   const start = Date.now();
   const formats = normalizeFormats(input.formats);
   const context = await buildReportContext(input, userId);
-  const { structured, inputTokens, outputTokens } = await generateStructuredReport(context);
+  const { structured, inputTokens, outputTokens, model } = await generateStructuredReport(context);
   const generationTimeMs = Date.now() - start;
   const supabase = await createServerSupabaseClient();
 
   let report: Report;
+  let previousExports: ReportExport[] = [];
 
   if (options.replaceReportId) {
     const existingReport = await getReport(userId, options.replaceReportId);
     if (!existingReport) throw new Error("Report not found");
-    await removeExistingExports(userId, existingReport);
+    previousExports = existingReport.exports;
 
     const { data, error } = await supabase
       .from("reports")
@@ -500,7 +548,7 @@ export async function generateReport(
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         last_generated_at: new Date().toISOString(),
-        metadata: { scopeLabel: context.scopeLabel },
+        metadata: { scopeLabel: context.scopeLabel, model },
       })
       .eq("user_id", userId)
       .eq("id", options.replaceReportId)
@@ -527,7 +575,7 @@ export async function generateReport(
         generation_time_ms: generationTimeMs,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
-        metadata: { scopeLabel: context.scopeLabel },
+        metadata: { scopeLabel: context.scopeLabel, model },
       })
       .select("*")
       .single();
@@ -538,6 +586,11 @@ export async function generateReport(
 
   try {
     const exports = await uploadReportExports(userId, report.id, report.title, formats, structured);
+    const nextPaths = new Set(exports.map((item) => item.storage_path));
+    await removeReportExportFiles(
+      previousExports.map((item) => item.storage_path).filter((path) => !nextPaths.has(path)),
+      "stale report export files",
+    );
     return { ...report, exports };
   } catch (error) {
     if (!options.replaceReportId) {
@@ -545,7 +598,13 @@ export async function generateReport(
     } else {
       await supabase
         .from("reports")
-        .update({ status: "failed", metadata: { error: error instanceof Error ? error.message : "Export upload failed" } })
+        .update({
+          status: "failed",
+          metadata: {
+            ...(report.metadata ?? {}),
+            error: error instanceof Error ? error.message : "Export upload failed",
+          },
+        })
         .eq("user_id", userId)
         .eq("id", report.id);
     }

@@ -80,19 +80,34 @@ export async function getReportExport(
   return (data as ReportExport | null) ?? null;
 }
 
+export async function getReportExports(userId: string, reportId: string): Promise<ReportExport[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("report_exports")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("report_id", reportId);
+
+  if (error) throw error;
+  return (data ?? []) as ReportExport[];
+}
+
 export async function deleteReport(userId: string, reportId: string): Promise<void> {
   const report = await getReport(userId, reportId);
   if (!report) throw new Error("Report not found");
 
-  const admin = createAdminSupabaseClient();
-  const paths = report.exports.map((item) => item.storage_path);
-  if (paths.length > 0) {
-    await admin.storage.from(REPORTS_BUCKET).remove(paths);
-  }
-
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.from("reports").delete().eq("user_id", userId).eq("id", reportId);
   if (error) throw error;
+
+  const paths = [...new Set(report.exports.map((item) => item.storage_path))];
+  if (paths.length > 0) {
+    const admin = createAdminSupabaseClient();
+    const { error: storageError } = await admin.storage.from(REPORTS_BUCKET).remove(paths);
+    if (storageError) {
+      console.warn("Failed to remove report export files after deleting report:", storageError);
+    }
+  }
 }
 
 export async function incrementReportDownload(
@@ -101,31 +116,53 @@ export async function incrementReportDownload(
   exportId: string,
 ): Promise<void> {
   const supabase = await createServerSupabaseClient();
-  const { data: report } = await supabase
+  const { data: report, error: reportError } = await supabase
     .from("reports")
     .select("export_count")
     .eq("user_id", userId)
     .eq("id", reportId)
     .maybeSingle();
 
-  const { data: exportRow } = await supabase
+  if (reportError) {
+    console.warn("Failed to read report download count:", reportError);
+    return;
+  }
+
+  const { data: exportRow, error: exportError } = await supabase
     .from("report_exports")
     .select("download_count")
     .eq("user_id", userId)
+    .eq("report_id", reportId)
     .eq("id", exportId)
     .maybeSingle();
 
-  await supabase
+  if (exportError) {
+    console.warn("Failed to read report export download count:", exportError);
+    return;
+  }
+
+  if (!report || !exportRow) return;
+
+  const { error: reportUpdateError } = await supabase
     .from("reports")
     .update({ export_count: ((report?.export_count as number | undefined) ?? 0) + 1 })
     .eq("user_id", userId)
     .eq("id", reportId);
 
-  await supabase
+  if (reportUpdateError) {
+    console.warn("Failed to update report download count:", reportUpdateError);
+  }
+
+  const { error: exportUpdateError } = await supabase
     .from("report_exports")
     .update({ download_count: ((exportRow?.download_count as number | undefined) ?? 0) + 1 })
     .eq("user_id", userId)
+    .eq("report_id", reportId)
     .eq("id", exportId);
+
+  if (exportUpdateError) {
+    console.warn("Failed to update report export download count:", exportUpdateError);
+  }
 }
 
 export async function downloadReportExport(path: string): Promise<Blob> {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getUser } from "@/lib/auth/session";
+import { getReportErrorStatus } from "@/lib/reports/errors";
 import { generateReport } from "@/lib/reports/generate";
 import { generateReportSchema } from "@/lib/reports/schemas";
 import { validateRequestBody } from "@/lib/security/server-utils";
@@ -19,6 +20,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Report generation error:", error);
     const message = error instanceof Error ? error.message : "Report generation failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: getReportErrorStatus(message) });
   }
 }

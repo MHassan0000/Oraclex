@@ -9,6 +9,7 @@ const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   OPENROUTER_API_KEY: z.string().min(1),
   UPLOADTHING_TOKEN: z.string().min(1),
+  REPORT_MODEL: z.string().min(1).optional(),
   ADMIN_USER_IDS: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
 });
@@ -17,6 +18,7 @@ const parsed = serverEnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
   UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+  REPORT_MODEL: process.env.REPORT_MODEL,
   ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 });

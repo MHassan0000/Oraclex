@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getUser } from "@/lib/auth/session";
 import { deleteReport } from "@/lib/db/reports";
+import { getReportErrorStatus } from "@/lib/reports/errors";
 
 type ReportRouteContext = {
   params: Promise<{ id: string }>;
@@ -18,6 +19,6 @@ export async function DELETE(_request: Request, { params }: ReportRouteContext) 
   } catch (error) {
     console.error("Report delete error:", error);
     const message = error instanceof Error ? error.message : "Failed to delete report";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: getReportErrorStatus(message) });
   }
 }
